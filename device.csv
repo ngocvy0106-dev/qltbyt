@@ -1,0 +1,6 @@
+﻿device_name,manufacturer,model,category,status,department,location,value,quantity,purchase_date,warranty_expiry,maintenance_interval,img_url
+Máy monitor bệnh nhân,Philips,IntelliVue MX450,Theo dõi,active,,,120000000,2,4/12/2026,4/12/2028,6,/device-images/monitor-philips.jpg
+Máy đo điện tim,Nihon Kohden,ECG-1250P,Chẩn đoán,active,,,70000000,3,4/12/2026,4/12/2031,12,/device-images/may-do-dien-tim.jpg
+Máy hút dịch di động,Laerdal,Compact Suction Unit,Sơ cứu,active,,,9800000,2,4/12/2026,4/12/2029,6,/device-images/may-hut-dich.jpg
+Bơm tiêm điện,Terumo,TE-SS800,Điều trị,active,,,15000000,4,4/12/2026,4/12/2028,6,/device-images/bom-tiem-dien.jpg
+Máy X-quang di động,Mindray,MobiEye 700,Chẩn đoán hình ảnh,active,,,600000000,1,4/12/2026,4/12/2032,6,/device-images/may-xquang-di-dong.jpg

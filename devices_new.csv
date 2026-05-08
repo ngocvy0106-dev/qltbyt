@@ -1,0 +1,9 @@
+﻿Tên thiết bị,Hãng sản xuất,Model,Danh mục,Trạng thái,Vị trí,Phòng,Giá trị,Số lượng,Ngày mua,Hết hạn bảo hành,Chu kỳ bảo trì,Ảnh
+Máy thở ICU,Dräger,Evita V500,Điều trị,active,,,450000000,1,3/12/2024,3/12/2027,6,/device-images/may-tho-icu.jpg
+Máy siêu âm màu,GE Healthcare,LOGIQ P7,Chẩn đoán hình ảnh,active,,,1200000000,1,11/20/2023,11/20/2026,6,/device-images/may-sieu-am.jpg
+Máy xét nghiệm huyết học,Sysmex,XN-1000,Xét nghiệm,active,,,800000000,1,1/10/2024,1/10/2027,6,/device-images/may-xet-nghiem.jpg
+Máy sốc tim,Philips,HeartStart MRx,Cấp cứu,active,,,150000000,2,9/15/2023,9/15/2026,6,/device-images/may-soc-tim.jpg
+Máy đo SpO2 cầm tay,Omron,HEM-9200T,Theo dõi,active,,,2000000,5,2/18/2024,2/18/2026,6,/device-images/spo2.jpg
+Máy nội soi tiêu hóa,Fujifilm,EG-760Z,Chẩn đoán,active,,,950000000,1,12/5/2023,12/5/2026,6,/device-images/noi-soi.jpg
+Máy lọc máu,Baxter,AK 98,Điều trị,active,,,600000000,2,1/25/2024,1/25/2027,6,/device-images/loc-mau.jpg
+Máy điện não đồ,Nihon Kohden,EEG-1200,Chẩn đoán,active,,,300000000,1,10/30/2023,10/30/2026,6,/device-images/dien-nao.jpg
