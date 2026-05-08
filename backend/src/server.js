@@ -18,9 +18,37 @@ const transfersRoutes = require("./routes/transfers")
 const app = express()
 const port = Number(process.env.PORT || 4000)
 
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+let frontendOriginRegex = null
+if (process.env.FRONTEND_ORIGIN_REGEX) {
+  try {
+    frontendOriginRegex = new RegExp(process.env.FRONTEND_ORIGIN_REGEX)
+  } catch (error) {
+    console.warn("Invalid FRONTEND_ORIGIN_REGEX:", error.message)
+  }
+}
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN || "http://localhost:3000",
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true)
+      }
+
+      const isAllowedOrigin =
+        allowedOrigins.includes(origin) ||
+        (frontendOriginRegex ? frontendOriginRegex.test(origin) : false)
+
+      if (isAllowedOrigin) {
+        return callback(null, true)
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`))
+    },
     credentials: true,
   })
 )

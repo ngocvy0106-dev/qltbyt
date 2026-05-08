@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: qltbyt-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 4000
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSL
+        value: true
+      - key: DB_SSL_REJECT_UNAUTHORIZED
+        value: true
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: FRONTEND_ORIGIN_REGEX
+        value: ^https://.*\.vercel\.app$
