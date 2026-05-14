@@ -546,6 +546,121 @@ router.get("/", async (req, res) => {
         }
       }
     }
+    const allocatedDeviceIdsForRequester = new Set()
+    const latestApprovedTransferByDeviceId = new Map()
+
+    if (isEmployeeRequest && (requester || requesterAlt)) {
+      try {
+        const [approvedAllocationRows] = await pool.query(
+          `SELECT device_id, requester_name, transfer_reason
+           FROM device_transfers
+           WHERE status IN ('approved', 'da duyet')
+             AND device_id IS NOT NULL
+           ORDER BY id DESC
+           LIMIT 500`
+        )
+
+        approvedAllocationRows.forEach((row) => {
+          const requesterName = normalizeText(row.requester_name || "")
+          const isMatchedRequester =
+            (requester && requesterName === requester) ||
+            (requesterAlt && requesterName === requesterAlt)
+          if (!isMatchedRequester) {
+            return
+          }
+
+          const reasonText = normalizeText(String(row.transfer_reason || ""))
+          const isAllocation = reasonText.includes("cap phat") || reasonText.includes("yeu cau cap phat")
+          if (!isAllocation) {
+            return
+          }
+
+          const deviceId = Number(row.device_id || 0)
+          if (Number.isInteger(deviceId) && deviceId > 0) {
+            allocatedDeviceIdsForRequester.add(deviceId)
+          }
+        })
+      } catch (allocationLookupError) {
+        if (
+          allocationLookupError.code !== "ER_NO_SUCH_TABLE" &&
+          allocationLookupError.code !== "ER_BAD_FIELD_ERROR"
+        ) {
+          throw allocationLookupError
+        }
+      }
+    }
+
+    if (isEmployeeRequest && Number.isInteger(userId) && userId > 0) {
+      try {
+        console.log("[DEBUG] Checking allocations for userId:", userId)
+
+        const [allocatedToUserRows] = await pool.query(
+          `SELECT device_id
+           FROM device_allocations
+           WHERE receiver_user_id = ? 
+             AND (status IS NULL OR status IN ('pending', 'approved', 'da duyet'))
+           ORDER BY id DESC
+           LIMIT 500`,
+          [userId]
+        )
+
+        console.log("[DEBUG] Allocation rows found:", allocatedToUserRows.length, allocatedToUserRows)
+
+        allocatedToUserRows.forEach((row) => {
+          const deviceId = Number(row.device_id || 0)
+          if (Number.isInteger(deviceId) && deviceId > 0) {
+            allocatedDeviceIdsForRequester.add(deviceId)
+          }
+        })
+
+        console.log("[DEBUG] Allocated device IDs:", Array.from(allocatedDeviceIdsForRequester))
+      } catch (userAllocationError) {
+        console.log("[DEBUG] Allocation query error:", userAllocationError.message)
+        if (
+          userAllocationError.code !== "ER_NO_SUCH_TABLE" &&
+          userAllocationError.code !== "ER_BAD_FIELD_ERROR"
+        ) {
+          throw userAllocationError
+        }
+      }
+    }
+
+    if (isEmployeeRequest && (requester || requesterAlt)) {
+      try {
+        const [allocatedByNameRows] = await pool.query(
+          `SELECT device_id, receiver_name
+           FROM device_allocations
+           WHERE receiver_name IS NOT NULL
+             AND (status IS NULL OR status IN ('pending', 'approved', 'da duyet'))
+           ORDER BY id DESC
+           LIMIT 500`
+        )
+
+        allocatedByNameRows.forEach((row) => {
+          const receiverName = normalizeText(row.receiver_name || "")
+          const matchedReceiver =
+            (requester && receiverName === requester) ||
+            (requesterAlt && receiverName === requesterAlt)
+
+          if (!matchedReceiver) {
+            return
+          }
+
+          const deviceId = Number(row.device_id || 0)
+          if (Number.isInteger(deviceId) && deviceId > 0) {
+            allocatedDeviceIdsForRequester.add(deviceId)
+          }
+        })
+      } catch (allocationNameError) {
+        if (
+          allocationNameError.code !== "ER_NO_SUCH_TABLE" &&
+          allocationNameError.code !== "ER_BAD_FIELD_ERROR"
+        ) {
+          throw allocationNameError
+        }
+      }
+    }
+
     const maintenanceIntervalColumnName = await getMaintenanceIntervalColumnName(connection)
     const createdByColumnName = await getCreatedByColumnName(connection)
     const imageUrlColumnName = await getImageUrlColumnName(connection)
@@ -603,6 +718,38 @@ router.get("/", async (req, res) => {
       })
 
     let normalizedRows = []
+    const employeeWhereParts = []
+    const employeeWhereParams = []
+
+    if (isEmployeeRequest) {
+      if (normalizedDepartmentNames.length > 0) {
+        const placeholders = normalizedDepartmentNames.map(() => "?").join(", ")
+        employeeWhereParts.push(
+          `LOWER(TRIM(COALESCE(dep.name, ''))) COLLATE utf8mb4_unicode_ci IN (${placeholders})`
+        )
+        employeeWhereParams.push(...normalizedDepartmentNames)
+      }
+
+      if (createdByColumnName && (requester || requesterAlt)) {
+        const requesterValues = [requester, requesterAlt].filter(Boolean)
+        const placeholders = requesterValues.map(() => "?").join(", ")
+        employeeWhereParts.push(
+          `LOWER(TRIM(d.${createdByColumnName})) COLLATE utf8mb4_unicode_ci IN (${placeholders})`
+        )
+        employeeWhereParams.push(...requesterValues)
+      }
+
+      const allocatedIds = Array.from(allocatedDeviceIdsForRequester)
+      if (allocatedIds.length > 0) {
+        const placeholders = allocatedIds.map(() => "?").join(", ")
+        employeeWhereParts.push(`d.id IN (${placeholders})`)
+        employeeWhereParams.push(...allocatedIds)
+      }
+    }
+
+    const employeeWhereClause = employeeWhereParts.length
+      ? `WHERE (${employeeWhereParts.join(" OR ")})`
+      : ""
     const queryVariants = [
       `SELECT
          d.id,
@@ -625,6 +772,7 @@ router.get("/", async (req, res) => {
          d.updated_at
        FROM devices d
          LEFT JOIN departments dep ON ${departmentJoinCondition}
+       ${employeeWhereClause}
       ORDER BY d.id ASC`,
       `SELECT
          d.id,
@@ -646,6 +794,7 @@ router.get("/", async (req, res) => {
          d.updated_at
        FROM devices d
          LEFT JOIN departments dep ON ${departmentJoinCondition}
+       ${employeeWhereClause}
       ORDER BY d.id ASC`,
       `SELECT
          d.id,
@@ -667,6 +816,7 @@ router.get("/", async (req, res) => {
          d.updated_at
        FROM devices d
          LEFT JOIN departments dep ON ${departmentJoinCondition}
+       ${employeeWhereClause}
       ORDER BY d.id ASC`,
       `SELECT
          d.id,
@@ -687,6 +837,7 @@ router.get("/", async (req, res) => {
          d.updated_at
        FROM devices d
          LEFT JOIN departments dep ON ${departmentJoinCondition}
+       ${employeeWhereClause}
       ORDER BY d.id ASC`,
     ]
 
@@ -694,7 +845,7 @@ router.get("/", async (req, res) => {
 
     for (const query of queryVariants) {
       try {
-        const [rows] = await pool.query(query)
+        const [rows] = await pool.query(query, employeeWhereParams)
         normalizedRows = createNormalizedRows(rows)
         lastError = null
         break
@@ -710,46 +861,6 @@ router.get("/", async (req, res) => {
 
     if (lastError) {
       throw lastError
-    }
-
-    const allocatedDeviceIdsForRequester = new Set()
-    const latestApprovedTransferByDeviceId = new Map()
-    if (isEmployeeRequest && (requester || requesterAlt)) {
-      try {
-        const [approvedAllocationRows] = await pool.query(
-          `SELECT device_id, requester_name, transfer_reason
-           FROM device_transfers
-           WHERE status IN ('approved', 'da duyet')
-             AND device_id IS NOT NULL
-           ORDER BY id DESC
-           LIMIT 500`
-        )
-
-        approvedAllocationRows.forEach((row) => {
-          const requesterName = normalizeText(row.requester_name || "")
-          const isMatchedRequester =
-            (requester && requesterName === requester) ||
-            (requesterAlt && requesterName === requesterAlt)
-          if (!isMatchedRequester) {
-            return
-          }
-
-          const reasonText = normalizeText(String(row.transfer_reason || ""))
-          const isAllocation = reasonText.includes("cap phat") || reasonText.includes("yeu cau cap phat")
-          if (!isAllocation) {
-            return
-          }
-
-          const deviceId = Number(row.device_id || 0)
-          if (Number.isInteger(deviceId) && deviceId > 0) {
-            allocatedDeviceIdsForRequester.add(deviceId)
-          }
-        })
-      } catch (allocationLookupError) {
-        if (allocationLookupError.code !== "ER_NO_SUCH_TABLE" && allocationLookupError.code !== "ER_BAD_FIELD_ERROR") {
-          throw allocationLookupError
-        }
-      }
     }
 
     if (isEmployeeRequest && normalizedDepartmentNames.length > 0) {
@@ -777,72 +888,6 @@ router.get("/", async (req, res) => {
           transferHistoryError.code !== "ER_BAD_FIELD_ERROR"
         ) {
           throw transferHistoryError
-        }
-      }
-    }
-
-    // Check device_allocations table for devices allocated to the current user
-    if (isEmployeeRequest && Number.isInteger(userId) && userId > 0) {
-      try {
-        console.log("[DEBUG] Checking allocations for userId:", userId)
-        
-        const [allocatedToUserRows] = await pool.query(
-          `SELECT device_id
-           FROM device_allocations
-           WHERE receiver_user_id = ? 
-             AND (status IS NULL OR status IN ('pending', 'approved', 'da duyet'))
-           ORDER BY id DESC
-           LIMIT 500`,
-          [userId]
-        )
-
-        console.log("[DEBUG] Allocation rows found:", allocatedToUserRows.length, allocatedToUserRows)
-
-        allocatedToUserRows.forEach((row) => {
-          const deviceId = Number(row.device_id || 0)
-          if (Number.isInteger(deviceId) && deviceId > 0) {
-            allocatedDeviceIdsForRequester.add(deviceId)
-          }
-        })
-
-        console.log("[DEBUG] Allocated device IDs:", Array.from(allocatedDeviceIdsForRequester))
-      } catch (userAllocationError) {
-        console.log("[DEBUG] Allocation query error:", userAllocationError.message)
-        if (userAllocationError.code !== "ER_NO_SUCH_TABLE" && userAllocationError.code !== "ER_BAD_FIELD_ERROR") {
-          throw userAllocationError
-        }
-      }
-    }
-
-    if (isEmployeeRequest && (requester || requesterAlt)) {
-      try {
-        const [allocatedByNameRows] = await pool.query(
-          `SELECT device_id, receiver_name
-           FROM device_allocations
-           WHERE receiver_name IS NOT NULL
-             AND (status IS NULL OR status IN ('pending', 'approved', 'da duyet'))
-           ORDER BY id DESC
-           LIMIT 500`
-        )
-
-        allocatedByNameRows.forEach((row) => {
-          const receiverName = normalizeText(row.receiver_name || "")
-          const matchedReceiver =
-            (requester && receiverName === requester) ||
-            (requesterAlt && receiverName === requesterAlt)
-
-          if (!matchedReceiver) {
-            return
-          }
-
-          const deviceId = Number(row.device_id || 0)
-          if (Number.isInteger(deviceId) && deviceId > 0) {
-            allocatedDeviceIdsForRequester.add(deviceId)
-          }
-        })
-      } catch (allocationNameError) {
-        if (allocationNameError.code !== "ER_NO_SUCH_TABLE" && allocationNameError.code !== "ER_BAD_FIELD_ERROR") {
-          throw allocationNameError
         }
       }
     }
