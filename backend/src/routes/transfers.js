@@ -141,13 +141,20 @@ async function saveAllocationReceivers({
       continue
     }
 
-    // Use transfer_id + receiver_id for unique allocation code (but store simple request_code)
-    const allocationCode = String(requestCode || "CP").trim()
+    const baseAllocationCode = String(requestCode || "CP").trim() || "CP"
+    const deviceValue = Number.isInteger(deviceId) && deviceId > 0 ? deviceId : null
+    const fallbackSuffix = `${transferId || "t"}-${deviceValue || "d"}-${receiverId}`
+    let fallbackAllocationCode = `${baseAllocationCode}-${fallbackSuffix}`
 
-    await db.query(insertQuery, [
-      allocationCode,
+    if (fallbackAllocationCode.length > 50) {
+      const maxBaseLength = Math.max(1, 50 - (fallbackSuffix.length + 1))
+      fallbackAllocationCode = `${baseAllocationCode.slice(0, maxBaseLength)}-${fallbackSuffix}`
+    }
+
+    const insertParams = [
+      baseAllocationCode,
       transferId,
-      Number.isInteger(deviceId) && deviceId > 0 ? deviceId : null,
+      deviceValue,
       String(fromDepartment || "").trim() || "Kho thiết bị",
       String(toDepartment || "").trim() || "Chưa xác định",
       String(toLocation || "").trim() || null,
@@ -156,7 +163,19 @@ async function saveAllocationReceivers({
       receiverId,
       receiverName,
       status,
-    ])
+    ]
+
+    try {
+      await db.query(insertQuery, insertParams)
+    } catch (error) {
+      if (error.code !== "ER_DUP_ENTRY") {
+        throw error
+      }
+
+      const fallbackParams = [...insertParams]
+      fallbackParams[0] = fallbackAllocationCode
+      await db.query(insertQuery, fallbackParams)
+    }
   }
 }
 
