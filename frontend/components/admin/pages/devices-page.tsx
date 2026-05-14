@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -399,11 +409,14 @@ export function DevicesPage() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null)
   const [detailQrCodeDataUrl, setDetailQrCodeDataUrl] = useState("")
   const [exportCategories, setExportCategories] = useState<string[]>([])
   const [exportDepartments, setExportDepartments] = useState<string[]>([])
+  const [selectedDeleteDevice, setSelectedDeleteDevice] = useState<DeviceItem | null>(null)
   const [editForm, setEditForm] = useState({
     name: "",
     model: "",
@@ -821,18 +834,35 @@ export function DevicesPage() {
     }
   }
 
+  const handleDeleteDialogChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open)
+    if (!open) {
+      setSelectedDeleteDevice(null)
+    }
+  }
+
+  const handleRequestDeleteDevice = (device: DeviceItem) => {
+    setSelectedDeleteDevice(device)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDeleteDevice = async () => {
+    if (!selectedDeleteDevice) {
+      return
+    }
+
+    handleDeleteDialogChange(false)
+    await handleDeleteDevice(selectedDeleteDevice)
+  }
+
   const handleDeleteDevice = async (device: DeviceItem) => {
     if (!isAdminRole(loggedInUser.role)) {
       alert("Không được phép xóa")
       return
     }
 
-    const accepted = window.confirm(`Bạn có chắc muốn xóa thiết bị ${device.code}?`)
-    if (!accepted) {
-      return
-    }
-
     try {
+      setIsDeletingId(device.id)
       const roleParam = encodeURIComponent(String(loggedInUser.role || ""))
       const fullNameParam = encodeURIComponent(String(loggedInUser.fullName || loggedInUser.username || ""))
       const response = await fetch(
@@ -856,6 +886,8 @@ export function DevicesPage() {
       })
     } catch {
       alert("Không thể kết nối server")
+    } finally {
+      setIsDeletingId(null)
     }
   }
 
@@ -1621,6 +1653,25 @@ export function DevicesPage() {
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa thiết bị?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa thiết bị {selectedDeleteDevice?.code} không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleDeleteDialogChange(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteDevice}
+              disabled={isDeletingId === selectedDeleteDevice?.id}
+            >
+              {isDeletingId === selectedDeleteDevice?.id ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div>
         <h1 className="text-2xl font-bold text-foreground">QUẢN LÝ THIẾT BỊ</h1>
       </div>
@@ -1778,7 +1829,7 @@ export function DevicesPage() {
                             {isAdminRole(loggedInUser.role) ? (
                               <DropdownMenuItem
                                 className="gap-2 text-destructive focus:text-destructive"
-                                onClick={() => handleDeleteDevice(device)}
+                                onClick={() => handleRequestDeleteDevice(device)}
                               >
                                 <Trash2 className="h-4 w-4" />
                                 Xóa

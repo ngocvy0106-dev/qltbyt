@@ -6,6 +6,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -142,9 +152,11 @@ export function TransfersPage() {
   const [isCreateTransferDialogOpen, setIsCreateTransferDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [assigningDeviceId, setAssigningDeviceId] = useState<number | null>(null)
   const [selectedWarehouseDeviceIds, setSelectedWarehouseDeviceIds] = useState<number[]>([])
   const [selectedTransfer, setSelectedTransfer] = useState<TransferItem | null>(null)
+  const [selectedDeleteTransfer, setSelectedDeleteTransfer] = useState<TransferItem | null>(null)
   const [transferReason, setTransferReason] = useState("")
   const [requestToDepartment, setRequestToDepartment] = useState("")
   const [requestToLocation, setRequestToLocation] = useState("")
@@ -1385,12 +1397,28 @@ export function TransfersPage() {
     await handleUpdateTransferStatus(item, "rejected", reason.trim())
   }
 
-  const handleDeleteTransfer = async (item: TransferItem) => {
-    const accepted = window.confirm(`Bạn có chắc muốn xóa yêu cầu ${item.code}?`)
-    if (!accepted) {
+  const handleDeleteDialogChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open)
+    if (!open) {
+      setSelectedDeleteTransfer(null)
+    }
+  }
+
+  const handleRequestDeleteTransfer = (item: TransferItem) => {
+    setSelectedDeleteTransfer(item)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDeleteTransfer = async () => {
+    if (!selectedDeleteTransfer) {
       return
     }
 
+    handleDeleteDialogChange(false)
+    await handleDeleteTransfer(selectedDeleteTransfer)
+  }
+
+  const handleDeleteTransfer = async (item: TransferItem) => {
     try {
       setIsRequestSubmitting(true)
 
@@ -1418,6 +1446,22 @@ export function TransfersPage() {
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa yêu cầu điều chuyển?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa yêu cầu {selectedDeleteTransfer?.code} không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleDeleteDialogChange(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteTransfer} disabled={isRequestSubmitting}>
+              {isRequestSubmitting ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">QUẢN LÝ ĐIỀU CHUYỂN - CẤP PHÁT</h1>
@@ -1533,7 +1577,7 @@ export function TransfersPage() {
                               </DropdownMenuItem>
                             </>
                           ) : (
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteTransfer(item)}>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleRequestDeleteTransfer(item)}>
                               Xóa
                             </DropdownMenuItem>
                           )}

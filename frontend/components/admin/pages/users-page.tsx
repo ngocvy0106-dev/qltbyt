@@ -3,6 +3,16 @@
 import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -190,6 +200,9 @@ export function UsersPage() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null)
+  const [selectedDeleteUser, setSelectedDeleteUser] = useState<UserItem | null>(null)
   const [editForm, setEditForm] = useState({
     name: "",
     username: "",
@@ -565,13 +578,30 @@ export function UsersPage() {
     }
   }
 
-  const handleDeleteUser = async (user: UserItem) => {
-    const accepted = window.confirm(`Xóa tài khoản ${user.username}?`)
-    if (!accepted) {
+  const handleDeleteDialogChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open)
+    if (!open) {
+      setSelectedDeleteUser(null)
+    }
+  }
+
+  const handleRequestDeleteUser = (user: UserItem) => {
+    setSelectedDeleteUser(user)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDeleteUser = async () => {
+    if (!selectedDeleteUser) {
       return
     }
 
+    handleDeleteDialogChange(false)
+    await handleDeleteUser(selectedDeleteUser)
+  }
+
+  const handleDeleteUser = async (user: UserItem) => {
     try {
+      setIsDeletingId(user.id)
       const actorUserId = getActorUserId()
       const actorQuery = actorUserId ? `?actorUserId=${actorUserId}` : ""
       const response = await fetch(`${apiBaseUrl}/api/users/${user.id}${actorQuery}`, {
@@ -588,11 +618,32 @@ export function UsersPage() {
       toast({ description: `Đã xóa tài khoản ${user.username} thành công` })
     } catch {
       alert("Không thể kết nối server")
+    } finally {
+      setIsDeletingId(null)
     }
   }
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa tài khoản?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa tài khoản {selectedDeleteUser?.username} không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleDeleteDialogChange(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteUser}
+              disabled={isDeletingId === selectedDeleteUser?.id}
+            >
+              {isDeletingId === selectedDeleteUser?.id ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="border-border bg-card">
           <CardContent className="flex items-center justify-between p-5">
@@ -760,7 +811,7 @@ export function UsersPage() {
                             <UserX className="h-4 w-4" />
                             {isLockedStatus(item.status) ? "Mở khóa" : "Tạm khóa"}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => handleDeleteUser(item)}>
+                          <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => handleRequestDeleteUser(item)}>
                             <Trash2 className="h-4 w-4" />
                             Xóa tài khoản
                           </DropdownMenuItem>

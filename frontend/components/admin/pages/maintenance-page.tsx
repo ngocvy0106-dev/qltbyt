@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -179,6 +189,7 @@ export function MaintenancePage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null)
@@ -192,6 +203,7 @@ export function MaintenancePage() {
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<number[]>([])
   const [selectedMaintenanceItem, setSelectedMaintenanceItem] = useState<MaintenanceItem | null>(null)
   const [selectedConfirmItem, setSelectedConfirmItem] = useState<MaintenanceItem | null>(null)
+  const [selectedDeleteItem, setSelectedDeleteItem] = useState<MaintenanceItem | null>(null)
   const [confirmCost, setConfirmCost] = useState("")
   const [createForm, setCreateForm] = useState({
     deviceId: "",
@@ -712,8 +724,29 @@ export function MaintenancePage() {
     setIsDetailDialogOpen(true)
   }
 
+  const handleDeleteDialogChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open)
+    if (!open) {
+      setSelectedDeleteItem(null)
+    }
+  }
+
+  const handleRequestDeleteMaintenance = (item: MaintenanceItem) => {
+    setSelectedDeleteItem(item)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDeleteMaintenance = async () => {
+    if (!selectedDeleteItem) {
+      return
+    }
+
+    handleDeleteDialogChange(false)
+    await handleDeleteMaintenance(selectedDeleteItem)
+  }
+
   const handleDeleteMaintenance = async (item: MaintenanceItem) => {
-    if (!window.confirm(`Xóa lịch bảo trì ${item.code}?`)) {
+    if (!item?.id) {
       return
     }
 
@@ -817,6 +850,25 @@ export function MaintenancePage() {
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa lịch bảo trì?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa lịch bảo trì {selectedDeleteItem?.code} không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleDeleteDialogChange(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteMaintenance}
+              disabled={isDeletingId === selectedDeleteItem?.id}
+            >
+              {isDeletingId === selectedDeleteItem?.id ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div>
         <h1 className="text-2xl font-bold text-foreground">BẢO TRÌ</h1>
       </div>
@@ -1013,7 +1065,7 @@ export function MaintenancePage() {
                                     <DropdownMenuItem onClick={() => handleViewMaintenanceDetail(item)}>Xem chi tiết</DropdownMenuItem>
                                     <DropdownMenuItem
                                       className="text-destructive focus:text-destructive"
-                                      onClick={() => handleDeleteMaintenance(item)}
+                                      onClick={() => handleRequestDeleteMaintenance(item)}
                                       disabled={isDeletingId === item.id}
                                     >
                                       {isDeletingId === item.id ? "Đang xóa..." : "Xóa"}

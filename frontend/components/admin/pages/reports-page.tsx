@@ -5,6 +5,16 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -322,6 +332,9 @@ export function ReportsPage() {
   const [inventorySummary, setInventorySummary] = useState<InventorySummaryItem[]>([])
   const [deviceActivityLogs, setDeviceActivityLogs] = useState<DeviceActivityLogItem[]>([])
   const [deviceStockMovements, setDeviceStockMovements] = useState<DeviceStockMovementItem[]>([])
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeletingMovementId, setIsDeletingMovementId] = useState<string | null>(null)
+  const [selectedDeleteMovement, setSelectedDeleteMovement] = useState<DeviceStockMovementItem | null>(null)
   const { toast } = useToast()
   const [loggedInUser, setLoggedInUser] = useState<LoggedInUser>({})
   const [isUserHydrated, setIsUserHydrated] = useState(false)
@@ -1495,12 +1508,8 @@ export function ReportsPage() {
   }
 
   const handleDeleteStockMovement = async (item: DeviceStockMovementItem) => {
-    const shouldDelete = window.confirm("Bạn có chắc muốn xóa bản ghi nhập/xuất này không?")
-    if (!shouldDelete) {
-      return
-    }
-
     try {
+      setIsDeletingMovementId(item.id)
       const response = await fetch(
         `${apiBaseUrl}/api/reports/stock-movements/${encodeURIComponent(item.id)}`,
         {
@@ -1529,7 +1538,30 @@ export function ReportsPage() {
       })
     } catch {
       window.alert("Không thể kết nối server")
+    } finally {
+      setIsDeletingMovementId(null)
     }
+  }
+
+  const handleDeleteDialogChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open)
+    if (!open) {
+      setSelectedDeleteMovement(null)
+    }
+  }
+
+  const handleRequestDeleteStockMovement = (item: DeviceStockMovementItem) => {
+    setSelectedDeleteMovement(item)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDeleteStockMovement = async () => {
+    if (!selectedDeleteMovement) {
+      return
+    }
+
+    handleDeleteDialogChange(false)
+    await handleDeleteStockMovement(selectedDeleteMovement)
   }
 
   const handleCreateFromTemplate = (template: ReportTemplateItem) => {
@@ -1563,6 +1595,25 @@ export function ReportsPage() {
 
   return (
     <div className="space-y-6 text-sm">
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa bản ghi nhập/xuất?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa bản ghi nhập/xuất này không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleDeleteDialogChange(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteStockMovement}
+              disabled={isDeletingMovementId === selectedDeleteMovement?.id}
+            >
+              {isDeletingMovementId === selectedDeleteMovement?.id ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {displayedMetrics.map((item) => {
           const Icon = item.iconNode.icon
@@ -1726,7 +1777,7 @@ export function ReportsPage() {
                                             </DropdownMenuItem>
                                           )}
                                           <DropdownMenuItem
-                                            onClick={() => handleDeleteStockMovement(item)}
+                                            onClick={() => handleRequestDeleteStockMovement(item)}
                                             className="text-destructive focus:text-destructive"
                                           >
                                             <Trash2 className="mr-2 h-4 w-4" />

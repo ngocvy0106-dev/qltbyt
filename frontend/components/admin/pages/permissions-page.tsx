@@ -5,6 +5,16 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -99,9 +109,12 @@ export function PermissionsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<RoleItem | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeletingRoleId, setIsDeletingRoleId] = useState<number | null>(null)
   const [formName, setFormName] = useState("")
   const [formDescription, setFormDescription] = useState("")
   const [formPermissions, setFormPermissions] = useState<string[]>([])
+  const [selectedDeleteRole, setSelectedDeleteRole] = useState<RoleItem | null>(null)
   const { toast } = useToast()
 
   const allPermissions = useMemo(
@@ -266,13 +279,8 @@ export function PermissionsPage() {
   }
 
   const handleDeleteRole = async (role: RoleItem) => {
-    const shouldDelete = window.confirm(`Bạn có chắc chắn muốn xóa vai trò \"${role.name}\" không?`)
-
-    if (!shouldDelete) {
-      return
-    }
-
     try {
+      setIsDeletingRoleId(role.id)
       const response = await fetch(`${apiBaseUrl}/api/roles/${role.id}`, {
         method: "DELETE",
         headers: {
@@ -290,7 +298,30 @@ export function PermissionsPage() {
       toast({ description: `Đã xóa vai trò ${role.name} thành công` })
     } catch {
       window.alert("Không thể xóa vai trò")
+    } finally {
+      setIsDeletingRoleId(null)
     }
+  }
+
+  const handleDeleteDialogChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open)
+    if (!open) {
+      setSelectedDeleteRole(null)
+    }
+  }
+
+  const handleRequestDeleteRole = (role: RoleItem) => {
+    setSelectedDeleteRole(role)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDeleteRole = async () => {
+    if (!selectedDeleteRole) {
+      return
+    }
+
+    handleDeleteDialogChange(false)
+    await handleDeleteRole(selectedDeleteRole)
   }
 
   const rolesWithCount = useMemo(
@@ -308,6 +339,25 @@ export function PermissionsPage() {
 
   return (
     <div className="space-y-8">
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa vai trò?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa vai trò {selectedDeleteRole?.name} không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleDeleteDialogChange(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteRole}
+              disabled={isDeletingRoleId === selectedDeleteRole?.id}
+            >
+              {isDeletingRoleId === selectedDeleteRole?.id ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">PHÂN QUYỀN</h1>
@@ -339,7 +389,7 @@ export function PermissionsPage() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteRole(role)}
+                    onClick={() => handleRequestDeleteRole(role)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

@@ -3,6 +3,16 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -45,7 +55,10 @@ export function DepartmentsPage() {
   const { toast } = useToast()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeletingId, setIsDeletingId] = useState<number | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState<DepartmentItem | null>(null)
+  const [selectedDeleteDepartment, setSelectedDeleteDepartment] = useState<DepartmentItem | null>(null)
   const [form, setForm] = useState({
     name: "",
     head_name: "",
@@ -166,17 +179,34 @@ export function DepartmentsPage() {
     }
   }
 
+  const handleDeleteDialogChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open)
+    if (!open) {
+      setSelectedDeleteDepartment(null)
+    }
+  }
+
+  const handleRequestDeleteDepartment = (department: DepartmentItem) => {
+    setSelectedDeleteDepartment(department)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDeleteDepartment = async () => {
+    if (!selectedDeleteDepartment) {
+      return
+    }
+
+    handleDeleteDialogChange(false)
+    await handleDeleteDepartment(selectedDeleteDepartment)
+  }
+
   const handleDeleteDepartment = async (department: DepartmentItem) => {
     if (!department.id) {
       return
     }
 
-    const accepted = window.confirm(`Bạn có chắc muốn xóa ${department.name}?`)
-    if (!accepted) {
-      return
-    }
-
     try {
+      setIsDeletingId(department.id)
       const response = await fetch(`${apiBaseUrl}/api/departments/${department.id}`, {
         method: "DELETE",
       })
@@ -191,11 +221,32 @@ export function DepartmentsPage() {
       toast({ description: `Đã xóa ${department.name} thành công` })
     } catch {
       alert("Không thể kết nối server")
+    } finally {
+      setIsDeletingId(null)
     }
   }
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xóa khoa/phòng?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc muốn xóa {selectedDeleteDepartment?.name} không?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleDeleteDialogChange(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteDepartment}
+              disabled={isDeletingId === selectedDeleteDepartment?.id}
+            >
+              {isDeletingId === selectedDeleteDepartment?.id ? "Đang xóa..." : "Xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="relative w-full lg:max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -237,7 +288,7 @@ export function DepartmentsPage() {
                     <DropdownMenuItem onClick={() => openEditDialog(department)}>
                       Chỉnh sửa
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDeleteDepartment(department)}>
+                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleRequestDeleteDepartment(department)}>
                       Xóa
                     </DropdownMenuItem>
                   </DropdownMenuContent>
