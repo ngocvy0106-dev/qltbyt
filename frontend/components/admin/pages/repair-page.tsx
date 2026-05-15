@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -233,6 +233,7 @@ export function RepairPage() {
   const [partsEtaRepairItem, setPartsEtaRepairItem] = useState<RepairItem | null>(null)
   const [partsEtaDate, setPartsEtaDate] = useState("")
   const [mounted, setMounted] = useState(false)
+  const prevDataJsonRef = useRef<string | null>(null)
 
   const isDepartmentEmployee = useMemo(() => {
     const roleText = normalizeText(loggedInUser.role || "")
@@ -356,8 +357,38 @@ export function RepairPage() {
         summary?: RepairsSummary
       }
 
-      setItems(data.items || [])
-      setSummary(data.summary || { pending: 0, inProgress: 0, completedThisMonth: 0 })
+      const itemsRes = data.items || []
+      const summaryRes = data.summary || { pending: 0, inProgress: 0, completedThisMonth: 0 }
+
+      // Only update state when the fetched data actually changed to avoid unnecessary reloads
+      try {
+        // Build a stable snapshot that excludes volatile fields (like updated_at)
+        const stableItems = (itemsRes || []).map((it) => ({
+          id: it.id,
+          code: it.code,
+          deviceId: it.deviceId,
+          device: it.device,
+          issue: it.issue,
+          reporter: it.reporter,
+          department: it.department,
+          priority: it.priority,
+          status: it.status,
+          assigneeUserId: it.assigneeUserId,
+          technician: it.technician,
+          createdAt: it.createdAt,
+        }))
+
+        const newJson = JSON.stringify({ items: stableItems, summary: summaryRes })
+        if (prevDataJsonRef.current !== newJson) {
+          prevDataJsonRef.current = newJson
+          setItems(itemsRes)
+          setSummary(summaryRes)
+        }
+      } catch (e) {
+        // Fallback: if serialization fails, update state to be safe
+        setItems(itemsRes)
+        setSummary(summaryRes)
+      }
     } catch {
       setItems([])
       setSummary({ pending: 0, inProgress: 0, completedThisMonth: 0 })
