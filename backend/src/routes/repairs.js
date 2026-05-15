@@ -523,6 +523,7 @@ router.put("/:id/assign", async (req, res) => {
     const id = Number(req.params.id)
     const actorUserId = resolveActorUserId(req)
     const assigneeUserId = Number(req.body?.assigneeUserId || 0)
+    console.log(`[DEBUG] PUT /api/repairs/${id}/assign called - actorUserId=${actorUserId}, assigneeUserId=${assigneeUserId}, body=${JSON.stringify(req.body)}`)
     const requestedStatus = normalizeStatus(req.body?.status)
     const shouldMoveToInProgress = requestedStatus === "in_progress"
     const isApprovalOnly = requestedStatus === "assigned" && !assigneeUserId
