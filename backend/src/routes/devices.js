@@ -97,16 +97,6 @@ function isNhanVienRole(value) {
   return role.includes("nhan vien") || role.includes("nhan-vien")
 }
 
-function isKyThuatVienRole(value) {
-  const role = normalizeText(value)
-  return (
-    role.includes("ky thuat vien") ||
-    role.includes("ky-thuat-vien") ||
-    role.includes("nhan vien") ||
-    role.includes("nhan-vien")
-  )
-}
-
 function isAdminRole(value) {
   const role = normalizeText(value)
   return role === "admin" || role.includes("quan tri") || role.includes("administrator")
@@ -1364,7 +1354,6 @@ router.get("/maintenance-alerts", async (req, res) => {
     const requesterAlt = normalizeText(String(req.query.requesterAlt || ""))
     const userId = Number(req.query.userId || 0)
     const isEmployee = isNhanVienRole(role)
-    const isTechnician = isKyThuatVienRole(role)
     const isAdmin = isAdminRole(role)
 
     const isMatchedRequester = (rawName) => {
@@ -1467,9 +1456,7 @@ router.get("/maintenance-alerts", async (req, res) => {
     try {
       const repairStatusCondition = isAdmin
         ? `r.status IN ('pending', 'cho xu ly')`
-        : isEmployee
-          ? `r.status IN ('assigned', 'da phan cong')`
-          : `r.status IN ('assigned', 'da phan cong', 'waiting_parts', 'cho phu tung')`
+        : `r.status IN ('assigned', 'da phan cong')`
 
       const queryVariants = [
         `SELECT
@@ -1570,6 +1557,11 @@ router.get("/maintenance-alerts", async (req, res) => {
           return
         }
 
+        const technicianName = String(row.technician_name || "").trim()
+        if (technicianName && !isMatchedRequester(technicianName)) {
+          return
+        }
+
         notifications.push({
           id: `repair-${row.id}`,
           title: `Yêu cầu ${requestCode} đã được admin duyệt`,
@@ -1580,32 +1572,6 @@ router.get("/maintenance-alerts", async (req, res) => {
         return
       }
 
-      if (isTechnician && row.technician_name && !isMatchedRequester(row.technician_name)) {
-        return
-      }
-
-      if (isTechnician) {
-        const technicianTitleByStatus = {
-          assigned: `Bạn được admin phân công ${requestCode}`,
-          waiting_parts: `Admin cập nhật phụ tùng cho ${requestCode}`,
-        }
-
-        if (normalizedRepairStatus !== "assigned" && !isPartsEtaConfirmedByAdmin) {
-          return
-        }
-
-        const technicianDescription = isPartsEtaConfirmedByAdmin && row.expected_arrival
-          ? `${row.device_name || "Thiết bị"} • Dự kiến có phụ tùng: ${formatNotificationDate(row.expected_arrival) || row.expected_arrival}`
-          : `${row.device_name || "Thiết bị"} • Người báo: ${row.reporter_name || "-"}`
-
-        notifications.push({
-          id: `repair-${row.id}`,
-          title: technicianTitleByStatus[normalizedRepairStatus] || `Cập nhật từ admin ${requestCode}`,
-          description: technicianDescription,
-          time: row.updated_at || row.created_at || null,
-          type: "repair",
-        })
-      }
     })
 
     // Handle maintenance task notifications

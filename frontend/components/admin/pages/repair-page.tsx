@@ -112,6 +112,7 @@ interface TechnicianOption {
   id: number
   name: string
   username?: string
+  departmentName?: string
 }
 
 function normalizeText(value: string) {
@@ -204,6 +205,7 @@ export function RepairPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState("")
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("")
   const [selectedPriority, setSelectedPriority] = useState("")
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState("")
   const [issueDescription, setIssueDescription] = useState("")
   const [reporterName, setReporterName] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -460,6 +462,7 @@ export function RepairPage() {
             id: Number(item.id || 0),
             name: String(item.name || item.username || "").trim(),
             username: String(item.username || "").trim() || undefined,
+            departmentName: String(item.departmentName || item.department || "").trim() || undefined,
           }))
           .filter((item) => item.id > 0 && item.name)
 
@@ -559,6 +562,10 @@ export function RepairPage() {
     setSelectedDeviceId("")
   }, [selectedDepartmentId])
 
+  useEffect(() => {
+    setSelectedTechnicianId("")
+  }, [selectedDepartmentId])
+
   const selectedDepartmentName = useMemo(() => {
     if (!selectedDepartmentId) {
       return String(loggedInUser.departmentName || "").trim()
@@ -589,6 +596,17 @@ export function RepairPage() {
     return byDepartment.filter((item) => !openRepairDeviceIds.has(Number(item.id)))
   }, [deviceOptions, selectedDepartmentName, items, isDepartmentEmployee])
 
+  const filteredTechnicianOptions = useMemo(() => {
+    const departmentText = normalizeText(selectedDepartmentName)
+    if (!departmentText) {
+      return technicianOptions
+    }
+
+    return technicianOptions.filter(
+      (item) => normalizeText(String(item.departmentName || "")) === departmentText
+    )
+  }, [selectedDepartmentName, technicianOptions])
+
   const displayDepartmentName =
     String(selectedDepartmentName || loggedInUser.departmentName || loggedInUser.department || "").trim() ||
     "Chưa xác định"
@@ -608,6 +626,7 @@ export function RepairPage() {
     setSelectedDeviceId("")
     setSelectedPriority("")
     setIssueDescription("")
+    setSelectedTechnicianId("")
 
     setIsCreateDialogOpen(true)
   }
@@ -619,6 +638,10 @@ export function RepairPage() {
     const normalizedIssue = String(issueDescription || "").trim()
     const priorityValue = String(selectedPriority || "").trim() || "medium"
     const selectedDevice = deviceOptions.find((item) => Number(item.id) === deviceId)
+    const selectedTechnician = isAdminRole
+      ? technicianOptions.find((item) => String(item.id) === selectedTechnicianId)
+      : null
+    const technicianName = String(selectedTechnician?.name || "").trim()
 
     if (!Number.isInteger(deviceId) || deviceId <= 0) {
       alert("Vui lòng chọn thiết bị")
@@ -632,6 +655,11 @@ export function RepairPage() {
 
     if (!departmentName) {
       alert("Vui lòng chọn khoa/phòng")
+      return
+    }
+
+    if (isAdminRole && !technicianName) {
+      alert("Vui lòng chọn nhân viên xử lý")
       return
     }
 
@@ -666,6 +694,24 @@ export function RepairPage() {
       console.log(`[DEBUG Frontend] POST succeeded with ID: ${responseData?.id}, Code: ${responseData?.requestCode}`)
       const requestCode = String(responseData?.requestCode || `RP${Date.now().toString().slice(-6)}`)
       const nowIso = new Date().toISOString()
+      const shouldAssignTechnician = Boolean(isAdminRole && technicianName && responseData?.id)
+
+      if (shouldAssignTechnician) {
+        const assignResponse = await fetch(`${apiBaseUrl}/api/repairs/${responseData?.id}/assign`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            technicianName,
+          }),
+        })
+
+        if (!assignResponse.ok) {
+          const assignData = (await assignResponse.json().catch(() => null)) as { message?: string } | null
+          alert(assignData?.message || "Phân công nhân viên xử lý thất bại")
+        }
+      }
 
       setItems((prev) => [
         {
@@ -677,8 +723,8 @@ export function RepairPage() {
           reporter: normalizedReporter || String(loggedInUser.fullName || loggedInUser.username || "-"),
           department: departmentName,
           priority: priorityValue,
-          status: "pending",
-          technician: "-",
+          status: shouldAssignTechnician ? "assigned" : "pending",
+          technician: technicianName || "-",
           createdAt: nowIso,
           progress: "-",
           part: "-",
@@ -691,11 +737,13 @@ export function RepairPage() {
 
       setSummary((prev) => ({
         ...prev,
-        pending: prev.pending + 1,
+        pending: shouldAssignTechnician ? prev.pending : prev.pending + 1,
       }))
 
       toast({
-        description: "Đã gửi yêu cầu cho Admin duyệt",
+        description: shouldAssignTechnician
+          ? "Đã tạo lịch sửa chữa và thông báo nhân viên"
+          : "Đã gửi yêu cầu cho Admin duyệt",
         duration: 2000,
         className: "border-emerald-200 bg-emerald-50 text-emerald-900 rounded-2xl px-4 py-3 shadow-lg",
       })
@@ -703,6 +751,7 @@ export function RepairPage() {
       setIssueDescription("")
       setSelectedPriority("")
       setSelectedDeviceId("")
+      setSelectedTechnicianId("")
     } catch {
       alert("Không thể kết nối server")
     } finally {
@@ -1169,6 +1218,27 @@ export function RepairPage() {
                   )}
                 </div>
               </div>
+              {isAdminRole && (
+                <div className="space-y-2">
+                  <Label>Nhân viên xử lý</Label>
+                  <Select value={selectedTechnicianId || undefined} onValueChange={setSelectedTechnicianId}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Chọn nhân viên" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredTechnicianOptions.length === 0 ? (
+                        <SelectItem value="__empty" disabled>
+                          Không có nhân viên trong khoa đã chọn
+                        </SelectItem>
+                      ) : filteredTechnicianOptions.map((item) => (
+                        <SelectItem key={item.id} value={String(item.id)}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Button
                 className="w-full bg-primary text-primary-foreground"
                 onClick={handleSubmitRepairRequest}
