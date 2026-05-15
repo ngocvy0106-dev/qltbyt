@@ -1557,9 +1557,9 @@ export function DevicesPage() {
           ? `\n\nDanh sách lỗi:\n- ${previewDetails.join("\n- ")}${overflowNote}`
           : "")
 
-      alert(resultMessage)
+      toast({ title: "Nhập CSV hoàn tất", description: resultMessage })
     } catch {
-      alert("Không thể nhập file CSV")
+      toast({ title: "Lỗi", description: "Không thể nhập file CSV" })
     } finally {
       setIsImportingCsv(false)
     }
