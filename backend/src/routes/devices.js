@@ -1057,46 +1057,36 @@ router.post("/", async (req, res) => {
 
     for (let itemIndex = 0; itemIndex < normalizedQuantity; itemIndex += 1) {
       const generatedCode = formatSerialCode(serialPrefix, nextSerial)
-      const repairQueryVariants = [
-        `SELECT
-           r.id,
-           r.request_code,
-           r.issue_description,
-           r.assignee_user_id,
-           u.username AS assignee_username,
-           u.full_name AS assignee_full_name,
-           r.status,
-           r.created_at,
-           r.completed_date,
-           r.updated_at
-         FROM repair_requests r
-         LEFT JOIN users u ON r.assignee_user_id = u.id
-         WHERE r.device_id = ?
-         ORDER BY r.id DESC`,
-        `SELECT
-           r.id,
-           r.request_code,
-           r.issue_description,
-           r.status,
-           r.created_at,
-           r.completed_date,
-           r.updated_at
-         FROM repair_requests r
-         WHERE r.device_id = ?
-         ORDER BY r.id DESC`,
-        `SELECT
-           r.id,
-           r.request_code,
-           r.issue_description,
-           r.status,
-           r.created_at,
-           r.completed_date
-         FROM repair_requests r
-         WHERE r.device_id = ?
-         ORDER BY r.id DESC`,
+
+      const insertQuery = `INSERT INTO devices
+       (device_code, device_name, model, category, status, location, \`value\`, purchase_date, warranty_expiry, ${maintenanceColumnInSql}department_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ${maintenanceValuePlaceholder}?, NOW(), NOW())`
+
+      const insertParams = [
+        generatedCode,
+        normalizedName,
+        model ?? null,
+        category ?? null,
+        normalizedStatus,
+        initialLocation,
+        normalizedValue,
+        purchaseDate,
+        warrantyExpiry,
+        ...optionalInsertValues,
+        normalizedDepartmentId,
       ]
 
-      // We only prepare these queries for potential use; no need to execute them during device creation.
+      const [insertResult] = await connection.query(insertQuery, insertParams)
+
+      if (insertResult && insertResult.insertId) {
+        if (firstInsertId === null) {
+          firstInsertId = insertResult.insertId
+        }
+        createdCount += 1
+        if (!firstCode) firstCode = generatedCode
+        lastCode = generatedCode
+      }
+
       nextSerial += 1
     }
 
