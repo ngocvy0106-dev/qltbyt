@@ -177,9 +177,14 @@ router.get("/", async (req, res) => {
     const search = String(req.query.search || "").trim().toLowerCase()
     const role = String(req.query.role || "").trim()
     const isEmployee = isNhanVienRole(role)
-    const requesterUserId = Number(req.query.userId || 0)
-    const normalizedRequesterUserId =
-      Number.isInteger(requesterUserId) && requesterUserId > 0 ? requesterUserId : null
+
+    // Prefer explicit header `x-user-id` when available (client may send it).
+    // Fallback to query `userId` if header is not present.
+    const queryUserId = Number(req.query.userId || 0)
+    const headerUserId = Number(req.headers["x-user-id"] || req.headers["x_user_id"] || 0)
+    const resolvedUserId = Number.isInteger(headerUserId) && headerUserId > 0 ? headerUserId : (Number.isInteger(queryUserId) && queryUserId > 0 ? queryUserId : 0)
+    const normalizedRequesterUserId = Number.isInteger(resolvedUserId) && resolvedUserId > 0 ? resolvedUserId : null
+    console.log(`[DEBUG] GET /api/repairs requesterUserId query=${queryUserId} header=${headerUserId} resolved=${normalizedRequesterUserId}`)
 
     const queryVariants = [
       `SELECT
