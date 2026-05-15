@@ -991,7 +991,7 @@ export function TransfersPage() {
         }
       }
 
-      toast({ title: "Đã điều chuyển thiết bị", description: "Đã điều chuyển thiết bị thành công", variant: 'success' })
+      toast({ description: "Đã điều chuyển thiết bị thành công", variant: 'success' })
       setIsBulkTransferDialogOpen(false)
       setPageTab("requests")
       setActiveTab(isAdminUser ? "approved" : "pending")
