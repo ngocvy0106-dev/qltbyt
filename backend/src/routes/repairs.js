@@ -61,6 +61,20 @@ function normalizeComparableText(value) {
     .replace(/đ/g, "d")
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+}
+
+function isNhanVienRole(value) {
+  const role = normalizeText(value)
+  return role.includes("nhan vien") || role.includes("nhan-vien")
+}
+
 function buildRepairRequestCode() {
   return `RP${Date.now().toString().slice(-6)}`
 }
@@ -68,6 +82,35 @@ function buildRepairRequestCode() {
 function resolveActorUserId(req) {
   const candidate = Number(req?.body?.actorUserId || req?.query?.actorUserId || 0)
   return Number.isInteger(candidate) && candidate > 0 ? candidate : null
+}
+
+async function loadUserDisplayName(userId) {
+  const normalizedUserId = Number(userId || 0)
+  if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
+    return null
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, full_name, username FROM users WHERE id = ? LIMIT 1`,
+      [normalizedUserId]
+    )
+    if (!rows.length) {
+      return null
+    }
+
+    const row = rows[0]
+    return {
+      id: normalizedUserId,
+      name: String(row.full_name || row.username || "").trim() || "-",
+    }
+  } catch (error) {
+    if (error.code === "ER_NO_SUCH_TABLE") {
+      return null
+    }
+
+    throw error
+  }
 }
 
 function extractCompletedTimeFromProgressNote(progressNote) {
@@ -132,8 +175,13 @@ async function updateDeviceStatusByRepairId(deviceId, status) {
 router.get("/", async (req, res) => {
   try {
     const search = String(req.query.search || "").trim().toLowerCase()
+    const role = String(req.query.role || "").trim()
+    const isEmployee = isNhanVienRole(role)
+    const requesterUserId = Number(req.query.userId || 0)
+    const normalizedRequesterUserId =
+      Number.isInteger(requesterUserId) && requesterUserId > 0 ? requesterUserId : null
 
-    const [rows] = await pool.query(
+    const queryVariants = [
       `SELECT
          r.id,
          r.request_code,
@@ -144,7 +192,9 @@ router.get("/", async (req, res) => {
          r.department_name,
          r.priority,
          r.status,
-         r.technician_name,
+        r.assignee_user_id,
+        u.username AS assignee_username,
+        u.full_name AS assignee_full_name,
          r.created_at,
          r.start_date,
          r.estimated_end_date,
@@ -159,8 +209,59 @@ router.get("/", async (req, res) => {
          r.updated_at
        FROM repair_requests r
        LEFT JOIN devices d ON r.device_id = d.id
-       ORDER BY r.id ASC`
-    )
+       LEFT JOIN users u ON r.assignee_user_id = u.id
+       ORDER BY r.id ASC`,
+      `SELECT
+         r.id,
+         r.request_code,
+         r.device_id,
+         COALESCE(d.device_name, r.device_name, 'Thiết bị chưa xác định') AS device_name,
+         r.issue_description,
+         r.reporter_name,
+         r.department_name,
+         r.priority,
+         r.status,
+         NULL AS assignee_user_id,
+         '-' AS assignee_name,
+         r.created_at,
+         r.start_date,
+         r.estimated_end_date,
+         r.progress_note,
+         r.part_name,
+         r.vendor_name,
+         r.ordered_date,
+         r.expected_arrival,
+         r.cost,
+         r.completed_date,
+         r.resolution_result,
+         r.updated_at
+       FROM repair_requests r
+       LEFT JOIN devices d ON r.device_id = d.id
+       ORDER BY r.id ASC`,
+    ]
+
+    let rows = []
+    let lastError = null
+
+    for (const query of queryVariants) {
+      try {
+        const [result] = await pool.query(query)
+        rows = result
+        lastError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastError = error
+          continue
+        }
+
+        throw error
+      }
+    }
+
+    if (lastError) {
+      throw lastError
+    }
 
     console.log(`[DEBUG] GET /api/repairs returned ${rows.length} rows`)
     if (rows.length > 0) {
@@ -178,7 +279,15 @@ router.get("/", async (req, res) => {
         department: row.department_name || "-",
         priority: normalizePriority(row.priority),
         status: normalizeStatus(row.status),
-        technician: row.technician_name || "-",
+        assigneeUserId: row.assignee_user_id ? Number(row.assignee_user_id) : null,
+        assignee: row.assignee_user_id
+          ? {
+              id: Number(row.assignee_user_id),
+              username: String(row.assignee_username || "").trim() || null,
+              full_name: String(row.assignee_full_name || "").trim() || null,
+            }
+          : null,
+        technician: row.assignee_full_name || row.assignee_username || "-",
         createdAt: row.created_at,
         startDate: row.start_date,
         estimatedEnd: row.estimated_end_date,
@@ -196,6 +305,16 @@ router.get("/", async (req, res) => {
         result: row.resolution_result || "Thành công",
       }))
       .filter((item) => {
+        if (isEmployee) {
+          if (!normalizedRequesterUserId) {
+            return false
+          }
+
+          if (!Number.isInteger(item.assigneeUserId) || item.assigneeUserId !== normalizedRequesterUserId) {
+            return false
+          }
+        }
+
         if (!search) {
           return true
         }
@@ -284,8 +403,8 @@ router.post("/", async (req, res) => {
 
     const queryVariants = [
       `INSERT INTO repair_requests
-       (request_code, device_id, issue_description, reporter_name, department_name, priority, status, technician_name, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, NOW(), NOW())`,
+       (request_code, device_id, issue_description, reporter_name, department_name, priority, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
       `INSERT INTO repair_requests
        (request_code, device_id, issue_description, reporter_name, department_name, priority, status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())`,
@@ -403,29 +522,69 @@ router.put("/:id/assign", async (req, res) => {
   try {
     const id = Number(req.params.id)
     const actorUserId = resolveActorUserId(req)
-    const technicianName = String(req.body?.technicianName || "").trim()
+    const assigneeUserId = Number(req.body?.assigneeUserId || 0)
     const requestedStatus = normalizeStatus(req.body?.status)
     const shouldMoveToInProgress = requestedStatus === "in_progress"
-    const isApprovalOnly = requestedStatus === "assigned" && !technicianName
+    const isApprovalOnly = requestedStatus === "assigned" && !assigneeUserId
 
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "ID yêu cầu không hợp lệ" })
     }
 
-    if (!technicianName && !isApprovalOnly) {
+    if (!assigneeUserId && !isApprovalOnly) {
       return res.status(400).json({ message: "Vui lòng chọn nhân viên" })
     }
 
-    const [existingRows] = await pool.query(
-      `SELECT r.id, r.device_id, r.technician_name, r.status,
-              COALESCE(d.device_name, r.device_name) AS device_name,
-              COALESCE(d.device_code, '') AS device_code
-       FROM repair_requests r
-       LEFT JOIN devices d ON r.device_id = d.id
-       WHERE r.id = ?
-       LIMIT 1`,
-      [id]
-    )
+    const assigneeUser = assigneeUserId ? await loadUserDisplayName(assigneeUserId) : null
+    if (assigneeUserId && !assigneeUser) {
+      return res.status(404).json({ message: "Không tìm thấy nhân viên" })
+    }
+
+    const existingQueryVariants = [
+      {
+        query: `SELECT r.id, r.device_id, r.assignee_user_id, r.status,
+                       COALESCE(d.device_name, r.device_name) AS device_name,
+                       COALESCE(d.device_code, '') AS device_code
+                FROM repair_requests r
+                LEFT JOIN devices d ON r.device_id = d.id
+                WHERE r.id = ?
+                LIMIT 1`,
+        params: [id],
+      },
+      {
+        query: `SELECT r.id, r.device_id, NULL AS assignee_user_id, r.status,
+                       COALESCE(d.device_name, r.device_name) AS device_name,
+                       COALESCE(d.device_code, '') AS device_code
+                FROM repair_requests r
+                LEFT JOIN devices d ON r.device_id = d.id
+                WHERE r.id = ?
+                LIMIT 1`,
+        params: [id],
+      },
+    ]
+
+    let existingRows = []
+    let lastExistingError = null
+
+    for (const variant of existingQueryVariants) {
+      try {
+        const [rows] = await pool.query(variant.query, variant.params)
+        existingRows = rows
+        lastExistingError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastExistingError = error
+          continue
+        }
+
+        throw error
+      }
+    }
+
+    if (lastExistingError) {
+      throw lastExistingError
+    }
 
     if (!existingRows.length) {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu sửa chữa" })
@@ -433,44 +592,79 @@ router.put("/:id/assign", async (req, res) => {
 
     const queryVariants = isApprovalOnly
       ? [
-          `UPDATE repair_requests
-           SET status = 'assigned', updated_at = NOW()
-           WHERE id = ?`,
-          `UPDATE repair_requests
-           SET status = 'assigned'
-           WHERE id = ?`,
+          {
+            query: `UPDATE repair_requests
+                    SET status = 'assigned', updated_at = NOW()
+                    WHERE id = ?`,
+            params: [id],
+          },
+          {
+            query: `UPDATE repair_requests
+                    SET status = 'assigned'
+                    WHERE id = ?`,
+            params: [id],
+          },
         ]
       : shouldMoveToInProgress
       ? [
-          `UPDATE repair_requests
-           SET technician_name = ?, status = 'in_progress', start_date = COALESCE(start_date, NOW()), updated_at = NOW()
-           WHERE id = ?`,
-          `UPDATE repair_requests
-           SET technician_name = ?, status = 'in_progress', updated_at = NOW()
-           WHERE id = ?`,
-          `UPDATE repair_requests
-           SET technician_name = ?, status = 'in_progress'
-           WHERE id = ?`,
+          {
+            query: `UPDATE repair_requests
+                    SET assignee_user_id = ?, status = 'in_progress', start_date = COALESCE(start_date, NOW()), updated_at = NOW()
+                    WHERE id = ?`,
+            params: [assigneeUserId, id],
+          },
+          {
+            query: `UPDATE repair_requests
+                    SET assignee_user_id = ?, status = 'in_progress', updated_at = NOW()
+                    WHERE id = ?`,
+            params: [assigneeUserId, id],
+          },
+          {
+            query: `UPDATE repair_requests
+                    SET assignee_user_id = ?, status = 'in_progress'
+                    WHERE id = ?`,
+            params: [assigneeUserId, id],
+          },
+          {
+            query: `UPDATE repair_requests
+                    SET status = 'in_progress'
+                    WHERE id = ?`,
+            params: [id],
+          },
         ]
       : [
-          `UPDATE repair_requests
-           SET technician_name = ?, status = 'assigned', updated_at = NOW()
-           WHERE id = ?`,
-          `UPDATE repair_requests
-           SET technician_name = ?, status = 'assigned'
-           WHERE id = ?`,
-          `UPDATE repair_requests
-           SET technician_name = ?
-           WHERE id = ?`,
+          {
+            query: `UPDATE repair_requests
+                    SET assignee_user_id = ?, status = 'assigned', updated_at = NOW()
+                    WHERE id = ?`,
+            params: [assigneeUserId, id],
+          },
+          {
+            query: `UPDATE repair_requests
+                    SET assignee_user_id = ?, status = 'assigned'
+                    WHERE id = ?`,
+            params: [assigneeUserId, id],
+          },
+          {
+            query: `UPDATE repair_requests
+                    SET assignee_user_id = ?
+                    WHERE id = ?`,
+            params: [assigneeUserId, id],
+          },
+          {
+            query: `UPDATE repair_requests
+                    SET status = 'assigned'
+                    WHERE id = ?`,
+            params: [id],
+          },
         ]
 
     let affectedRows = 0
     let lastError = null
 
-    for (const query of queryVariants) {
+    for (const variant of queryVariants) {
       try {
-        const params = isApprovalOnly ? [id] : [technicianName, id]
-        const [result] = await pool.query(query, params)
+        const [result] = await pool.query(variant.query, variant.params)
         affectedRows = Number(result.affectedRows || 0)
         lastError = null
         break
@@ -512,11 +706,12 @@ router.put("/:id/assign", async (req, res) => {
       const deviceName = existingRows[0].device_name || "Thiết bị"
       const deviceCode = existingRows[0].device_code
       const serialLabel = deviceCode ? ` [${deviceCode}]` : ""
+      const assigneeName = assigneeUser?.name || "-"
       
       // Log activity for starting repair
       await logActivity({
         action: "repair.start",
-        description: `Bắt đầu sửa chữa thiết bị ${deviceName}${serialLabel} - Nhân viên: ${technicianName}`,
+        description: `Bắt đầu sửa chữa thiết bị ${deviceName}${serialLabel} - Nhân viên: ${assigneeName}`,
         entityType: "repair",
         entityId: id,
         userId: actorUserId,
@@ -526,11 +721,12 @@ router.put("/:id/assign", async (req, res) => {
       const deviceName = existingRows[0].device_name || "Thiết bị"
       const deviceCode = existingRows[0].device_code
       const serialLabel = deviceCode ? ` [${deviceCode}]` : ""
+      const assigneeName = assigneeUser?.name || "-"
       
-      // Log activity for assigning technician
+      // Log activity for assigning employee
       await logActivity({
         action: "repair.assign",
-        description: `Phân công sửa chữa thiết bị ${deviceName}${serialLabel} cho ${technicianName}`,
+        description: `Phân công sửa chữa thiết bị ${deviceName}${serialLabel} cho ${assigneeName}`,
         entityType: "repair",
         entityId: id,
         userId: actorUserId,
@@ -551,48 +747,75 @@ router.put("/:id/confirm", async (req, res) => {
   try {
     const id = Number(req.params.id)
     const actorUserId = resolveActorUserId(req)
-    const technicianName = String(req.body?.technicianName || "").trim()
-    const technicianUsername = String(req.body?.technicianUsername || "").trim()
-    const displayName = technicianName || technicianUsername
 
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "ID yêu cầu không hợp lệ" })
     }
 
-    if (!displayName) {
-      return res.status(400).json({ message: "Thiếu thông tin nhân viên xác nhận" })
+    if (!actorUserId) {
+      return res.status(400).json({ message: "Thiếu thông tin người dùng" })
     }
 
-    const [existingRows] = await pool.query(
-      `SELECT r.id,
-              r.technician_name,
-              r.status,
-              r.issue_description,
-              COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
-              COALESCE(d.device_code, '') AS device_code
-       FROM repair_requests r
-       LEFT JOIN devices d ON r.device_id = d.id
-       WHERE r.id = ?
-       LIMIT 1`,
-      [id]
-    )
+    const existingQueryVariants = [
+      {
+        query: `SELECT r.id,
+                       r.assignee_user_id,
+                       r.status,
+                       r.issue_description,
+                       COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
+                       COALESCE(d.device_code, '') AS device_code
+                FROM repair_requests r
+                LEFT JOIN devices d ON r.device_id = d.id
+                WHERE r.id = ?
+                LIMIT 1`,
+        params: [id],
+      },
+      {
+        query: `SELECT r.id,
+                       NULL AS assignee_user_id,
+                       r.status,
+                       r.issue_description,
+                       COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
+                       COALESCE(d.device_code, '') AS device_code
+                FROM repair_requests r
+                LEFT JOIN devices d ON r.device_id = d.id
+                WHERE r.id = ?
+                LIMIT 1`,
+        params: [id],
+      },
+    ]
+
+    let existingRows = []
+    let lastExistingError = null
+
+    for (const variant of existingQueryVariants) {
+      try {
+        const [rows] = await pool.query(variant.query, variant.params)
+        existingRows = rows
+        lastExistingError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastExistingError = error
+          continue
+        }
+
+        throw error
+      }
+    }
+
+    if (lastExistingError) {
+      throw lastExistingError
+    }
 
     if (!existingRows.length) {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu sửa chữa" })
     }
 
     const existing = existingRows[0]
-    const currentTechnician = String(existing.technician_name || "").trim()
     const currentStatus = normalizeStatus(existing.status)
-    const normalizedCurrentTechnician = normalizeComparableText(currentTechnician)
-    const normalizedTechnicianName = normalizeComparableText(technicianName)
-    const normalizedTechnicianUsername = normalizeComparableText(technicianUsername)
-    const isTechnicianMatched =
-      !normalizedCurrentTechnician ||
-      normalizedCurrentTechnician === normalizedTechnicianName ||
-      normalizedCurrentTechnician === normalizedTechnicianUsername
-
-    if (!isTechnicianMatched) {
+    const currentAssigneeUserId = Number(existing.assignee_user_id || 0)
+    if (Number.isInteger(currentAssigneeUserId) && currentAssigneeUserId > 0 && currentAssigneeUserId !== actorUserId) {
       return res.status(403).json({ message: "Yêu cầu này được phân công cho nhân viên khác" })
     }
 
@@ -603,27 +826,33 @@ router.put("/:id/confirm", async (req, res) => {
     const queryVariants = [
       {
         query: `UPDATE repair_requests
-                SET technician_name = COALESCE(NULLIF(?, ''), technician_name),
+                SET assignee_user_id = ?,
                     status = 'in_progress',
                     start_date = COALESCE(start_date, NOW()),
                     updated_at = NOW()
                 WHERE id = ?`,
-        params: [displayName, id],
+        params: [actorUserId, id],
       },
       {
         query: `UPDATE repair_requests
-                SET technician_name = COALESCE(NULLIF(?, ''), technician_name),
+                SET assignee_user_id = ?,
                     status = 'in_progress',
                     updated_at = NOW()
                 WHERE id = ?`,
-        params: [displayName, id],
+        params: [actorUserId, id],
       },
       {
         query: `UPDATE repair_requests
-                SET technician_name = COALESCE(NULLIF(?, ''), technician_name),
+                SET assignee_user_id = ?,
                     status = 'in_progress'
                 WHERE id = ?`,
-        params: [displayName, id],
+        params: [actorUserId, id],
+      },
+      {
+        query: `UPDATE repair_requests
+                SET status = 'in_progress'
+                WHERE id = ?`,
+        params: [id],
       },
     ]
 
@@ -680,8 +909,6 @@ router.put("/:id/accept", async (req, res) => {
   try {
     const id = Number(req.params.id)
     const actorUserId = resolveActorUserId(req)
-    const technicianName = String(req.body?.technicianName || "").trim()
-    const technicianUsername = String(req.body?.technicianUsername || "").trim()
     const estimatedEndDate = String(req.body?.estimatedEndDate || "").trim()
     const rawHasMissingParts = req.body?.hasMissingParts
     const hasMissingParts =
@@ -702,8 +929,8 @@ router.put("/:id/accept", async (req, res) => {
       return res.status(400).json({ message: "ID yêu cầu không hợp lệ" })
     }
 
-    if (!technicianName) {
-      return res.status(400).json({ message: "Thiếu thông tin nhân viên" })
+    if (!actorUserId) {
+      return res.status(400).json({ message: "Thiếu thông tin người dùng" })
     }
 
     if (!estimatedEndDate) {
@@ -718,30 +945,54 @@ router.put("/:id/accept", async (req, res) => {
       return res.status(400).json({ message: "Chi phí dự kiến không hợp lệ" })
     }
 
-    const [existingRows] = await pool.query(
-      `SELECT id, technician_name, status
-       FROM repair_requests
-       WHERE id = ?
-       LIMIT 1`,
-      [id]
-    )
+    const existingQueryVariants = [
+      {
+        query: `SELECT id, assignee_user_id, status
+                FROM repair_requests
+                WHERE id = ?
+                LIMIT 1`,
+        params: [id],
+      },
+      {
+        query: `SELECT id, NULL AS assignee_user_id, status
+                FROM repair_requests
+                WHERE id = ?
+                LIMIT 1`,
+        params: [id],
+      },
+    ]
+
+    let existingRows = []
+    let lastExistingError = null
+
+    for (const variant of existingQueryVariants) {
+      try {
+        const [rows] = await pool.query(variant.query, variant.params)
+        existingRows = rows
+        lastExistingError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastExistingError = error
+          continue
+        }
+
+        throw error
+      }
+    }
+
+    if (lastExistingError) {
+      throw lastExistingError
+    }
 
     if (!existingRows.length) {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu sửa chữa" })
     }
 
     const existing = existingRows[0]
-    const currentTechnician = String(existing.technician_name || "").trim()
     const currentStatus = normalizeStatus(existing.status)
-    const normalizedCurrentTechnician = normalizeComparableText(currentTechnician)
-    const normalizedTechnicianName = normalizeComparableText(technicianName)
-    const normalizedTechnicianUsername = normalizeComparableText(technicianUsername)
-    const isTechnicianMatched =
-      !normalizedCurrentTechnician ||
-      normalizedCurrentTechnician === normalizedTechnicianName ||
-      normalizedCurrentTechnician === normalizedTechnicianUsername
-
-    if (!isTechnicianMatched) {
+    const currentAssigneeUserId = Number(existing.assignee_user_id || 0)
+    if (Number.isInteger(currentAssigneeUserId) && currentAssigneeUserId > 0 && currentAssigneeUserId !== actorUserId) {
       return res.status(403).json({ message: "Yêu cầu này được phân công cho nhân viên khác" })
     }
 
@@ -753,7 +1004,7 @@ router.put("/:id/accept", async (req, res) => {
       ? [
           {
             query: `UPDATE repair_requests
-                    SET technician_name = ?,
+            SET assignee_user_id = ?,
                         status = 'waiting_parts',
                         start_date = COALESCE(start_date, NOW()),
                         estimated_end_date = ?,
@@ -763,11 +1014,11 @@ router.put("/:id/accept", async (req, res) => {
                         expected_arrival = ?,
                         updated_at = NOW()
                     WHERE id = ?`,
-            params: [technicianName, estimatedEndDate, missingPartName, estimatedCost, estimatedEndDate, id],
+          params: [actorUserId, estimatedEndDate, missingPartName, estimatedCost, estimatedEndDate, id],
           },
           {
             query: `UPDATE repair_requests
-                    SET technician_name = ?,
+            SET assignee_user_id = ?,
                         status = 'waiting_parts',
                         estimated_end_date = ?,
                         part_name = ?,
@@ -775,44 +1026,58 @@ router.put("/:id/accept", async (req, res) => {
                         expected_arrival = ?,
                         updated_at = NOW()
                     WHERE id = ?`,
-            params: [technicianName, estimatedEndDate, missingPartName, estimatedCost, estimatedEndDate, id],
+          params: [actorUserId, estimatedEndDate, missingPartName, estimatedCost, estimatedEndDate, id],
           },
           {
             query: `UPDATE repair_requests
-                    SET technician_name = ?,
+            SET assignee_user_id = ?,
                         status = 'waiting_parts',
                         part_name = ?,
                         cost = ?
                     WHERE id = ?`,
-            params: [technicianName, missingPartName, estimatedCost, id],
+          params: [actorUserId, missingPartName, estimatedCost, id],
+        },
+        {
+          query: `UPDATE repair_requests
+            SET status = 'waiting_parts',
+          part_name = ?,
+          cost = ?
+            WHERE id = ?`,
+          params: [missingPartName, estimatedCost, id],
           },
         ]
       : [
           {
             query: `UPDATE repair_requests
-                    SET technician_name = ?,
+            SET assignee_user_id = ?,
                         status = 'in_progress',
                         start_date = COALESCE(start_date, NOW()),
                         estimated_end_date = ?,
                         updated_at = NOW()
                     WHERE id = ?`,
-            params: [technicianName, estimatedEndDate, id],
+          params: [actorUserId, estimatedEndDate, id],
           },
           {
             query: `UPDATE repair_requests
-                    SET technician_name = ?,
+            SET assignee_user_id = ?,
                         status = 'in_progress',
                         estimated_end_date = ?,
                         updated_at = NOW()
                     WHERE id = ?`,
-            params: [technicianName, estimatedEndDate, id],
+          params: [actorUserId, estimatedEndDate, id],
           },
           {
             query: `UPDATE repair_requests
-                    SET technician_name = ?,
+            SET assignee_user_id = ?,
                         status = 'in_progress'
                     WHERE id = ?`,
-            params: [technicianName, id],
+          params: [actorUserId, id],
+        },
+        {
+          query: `UPDATE repair_requests
+            SET status = 'in_progress'
+            WHERE id = ?`,
+          params: [id],
           },
         ]
 
@@ -843,10 +1108,13 @@ router.put("/:id/accept", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu sửa chữa" })
     }
 
+    const assigneeUser = await loadUserDisplayName(actorUserId)
+    const assigneeName = assigneeUser?.name || "-"
+
     await logActivity({
       userId: actorUserId,
       action: "repair.accept",
-      description: `Nhân viên ${technicianName} nhận sửa chữa yêu cầu RP${id}`,
+      description: `Nhân viên ${assigneeName} nhận sửa chữa yêu cầu RP${id}`,
       entityType: "repair",
       entityId: id,
     })

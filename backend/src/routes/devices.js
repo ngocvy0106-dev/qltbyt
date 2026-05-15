@@ -1057,78 +1057,46 @@ router.post("/", async (req, res) => {
 
     for (let itemIndex = 0; itemIndex < normalizedQuantity; itemIndex += 1) {
       const generatedCode = formatSerialCode(serialPrefix, nextSerial)
-      const queryParams = [
-        [
-          generatedCode,
-          normalizedName,
-          String(model || "").trim() || null,
-          String(category || "").trim() || null,
-          normalizedStatus,
-          initialLocation,
-          Number.isFinite(normalizedValue) ? normalizedValue : null,
-          purchaseDate || null,
-          warrantyExpiry || null,
-          ...optionalInsertValues,
-          normalizedDepartmentId,
-        ],
-        [
-          generatedCode,
-          normalizedName,
-          String(model || "").trim() || null,
-          String(category || "").trim() || null,
-          normalizedStatus,
-          initialLocation,
-          Number.isFinite(normalizedValue) ? normalizedValue : null,
-          purchaseDate || null,
-          warrantyExpiry || null,
-          ...optionalInsertValues,
-        ],
-        [
-          generatedCode,
-          normalizedName,
-          String(model || "").trim() || null,
-          String(category || "").trim() || null,
-          normalizedStatus,
-          initialLocation,
-          Number.isFinite(normalizedValue) ? normalizedValue : null,
-          ...optionalInsertValues,
-        ],
+      const repairQueryVariants = [
+        `SELECT
+           r.id,
+           r.request_code,
+           r.issue_description,
+           r.assignee_user_id,
+           u.username AS assignee_username,
+           u.full_name AS assignee_full_name,
+           r.status,
+           r.created_at,
+           r.completed_date,
+           r.updated_at
+         FROM repair_requests r
+         LEFT JOIN users u ON r.assignee_user_id = u.id
+         WHERE r.device_id = ?
+         ORDER BY r.id DESC`,
+        `SELECT
+           r.id,
+           r.request_code,
+           r.issue_description,
+           r.status,
+           r.created_at,
+           r.completed_date,
+           r.updated_at
+         FROM repair_requests r
+         WHERE r.device_id = ?
+         ORDER BY r.id DESC`,
+        `SELECT
+           r.id,
+           r.request_code,
+           r.issue_description,
+           r.status,
+           r.created_at,
+           r.completed_date
+         FROM repair_requests r
+         WHERE r.device_id = ?
+         ORDER BY r.id DESC`,
       ]
 
-      let queryError = null
-      const variantOrder =
-        preferredVariantIndex >= 0
-          ? [preferredVariantIndex, ...queryVariants.map((_, index) => index).filter((index) => index !== preferredVariantIndex)]
-          : queryVariants.map((_, index) => index)
-
-      for (const variantIndex of variantOrder) {
-        try {
-          const [result] = await connection.query(queryVariants[variantIndex], queryParams[variantIndex])
-          preferredVariantIndex = variantIndex
-          firstInsertId = firstInsertId || result.insertId
-          createdCount += 1
-          firstCode = firstCode || generatedCode
-          lastCode = generatedCode
-          queryError = null
-          break
-        } catch (error) {
-          if (error.code === "ER_BAD_FIELD_ERROR") {
-            queryError = error
-            continue
-          }
-
-          if (error.code === "ER_DUP_ENTRY") {
-            throw new Error("Trùng mã serial khi tạo thiết bị. Vui lòng thử lại.")
-          }
-
-          throw error
-        }
-      }
-
-      if (queryError) {
-        throw queryError
-      }
-
+      // We only prepare these queries for potential use; no need to execute them during device creation.
       nextSerial += 1
     }
 
@@ -1464,7 +1432,7 @@ router.get("/maintenance-alerts", async (req, res) => {
            r.request_code,
            COALESCE(d.device_name, r.device_name, 'Thiết bị chưa xác định') AS device_name,
            r.reporter_name,
-           r.technician_name,
+           r.assignee_user_id,
            r.expected_arrival,
            r.progress_note,
            r.created_at,
@@ -1480,7 +1448,7 @@ router.get("/maintenance-alerts", async (req, res) => {
            r.request_code,
            COALESCE(d.device_name, r.device_name, 'Thiết bị chưa xác định') AS device_name,
            r.reporter_name,
-           r.technician_name,
+           r.assignee_user_id,
            r.expected_arrival,
            r.created_at,
            r.status
@@ -1494,7 +1462,7 @@ router.get("/maintenance-alerts", async (req, res) => {
            r.request_code,
            COALESCE(d.device_name, r.device_name, 'Thiết bị chưa xác định') AS device_name,
            r.reporter_name,
-           r.technician_name,
+           r.assignee_user_id,
            r.created_at,
            r.status
          FROM repair_requests r
@@ -1502,6 +1470,19 @@ router.get("/maintenance-alerts", async (req, res) => {
          WHERE ${repairStatusCondition}
          ORDER BY r.id DESC
          LIMIT 20`,
+          `SELECT
+            r.id,
+            r.request_code,
+            COALESCE(d.device_name, r.device_name, 'Thiết bị chưa xác định') AS device_name,
+            r.reporter_name,
+            NULL AS assignee_user_id,
+            r.created_at,
+            r.status
+          FROM repair_requests r
+          LEFT JOIN devices d ON r.device_id = d.id
+          WHERE ${repairStatusCondition}
+          ORDER BY r.id DESC
+          LIMIT 20`,
       ]
 
       let lastRepairError = null
@@ -1557,8 +1538,8 @@ router.get("/maintenance-alerts", async (req, res) => {
           return
         }
 
-        const technicianName = String(row.technician_name || "").trim()
-        if (technicianName && !isMatchedRequester(technicianName)) {
+        const assignedUserId = Number(row.assignee_user_id || 0)
+        if (!Number.isInteger(userId) || userId <= 0 || assignedUserId !== userId) {
           return
         }
 

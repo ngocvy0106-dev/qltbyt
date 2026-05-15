@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS repair_requests (
   department_name VARCHAR(150) NULL,
   priority VARCHAR(30) NOT NULL DEFAULT 'medium',
   status VARCHAR(30) NOT NULL DEFAULT 'pending',
-  technician_name VARCHAR(150) NULL,
+  assignee_user_id INT NULL,
   start_date DATETIME NULL,
   estimated_end_date DATE NULL,
   progress_note TEXT NULL,
@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS repair_requests (
   INDEX idx_repairs_priority (priority),
   INDEX idx_repairs_created_at (created_at),
   INDEX idx_repairs_device_id (device_id),
+  INDEX idx_repairs_assignee_user_id (assignee_user_id),
   CONSTRAINT fk_repair_device
     FOREIGN KEY (device_id)
     REFERENCES devices(id)
@@ -39,7 +40,7 @@ CREATE TABLE IF NOT EXISTS repair_requests (
 
 -- Dữ liệu mẫu tùy chọn (bỏ comment để insert nhanh)
 -- INSERT INTO repair_requests
--- (request_code, device_name, issue_description, reporter_name, department_name, priority, status, technician_name, cost, created_at)
+-- (request_code, device_name, issue_description, reporter_name, department_name, priority, status, cost, created_at)
 -- VALUES
 -- ('RP001', 'Máy siêu âm GE Voluson', 'Màn hình hiển thị bị nhiễu', 'BS. Nguyễn Thị Hoa', 'Khoa Sản', 'high', 'pending', NULL, 0, NOW()),
 -- ('RP002', 'Monitor Philips MX800', 'Không đo được SpO2', 'DD. Trần Văn Nam', 'Khoa ICU', 'critical', 'pending', NULL, 0, NOW());

@@ -227,8 +227,17 @@ function filterRowsByEmployeeScope(rows, scope, options = {}) {
       return true
     }
 
-    if (technicianField && isRequesterMatched(row?.[technicianField], scope)) {
-      return true
+    if (technicianField) {
+      const techValue = row?.[technicianField]
+      if (techValue) {
+        if (typeof techValue === "object") {
+          if (isRequesterMatched(techValue.full_name, scope) || isRequesterMatched(techValue.username, scope)) {
+            return true
+          }
+        } else if (isRequesterMatched(techValue, scope)) {
+          return true
+        }
+      }
     }
 
     if (requesterField) {
@@ -1228,13 +1237,16 @@ async function loadDeviceActivityLogsData(scope = {}) {
          LIMIT 1), 
         'Không xác định') AS reporter_name,
        r.issue_description,
-       r.technician_name,
+       r.assignee_user_id AS assignee_id,
+       assignee.username AS assignee_username,
+       assignee.full_name AS assignee_full_name,
        r.status,
        r.updated_at,
        r.created_at
      FROM repair_requests r
      LEFT JOIN devices d ON r.device_id = d.id
      LEFT JOIN departments dep ON d.department_id = dep.id
+     LEFT JOIN users assignee ON r.assignee_user_id = assignee.id
      WHERE d.id IS NOT NULL
        AND d.department_id IS NOT NULL
      ORDER BY r.id DESC
@@ -1246,14 +1258,17 @@ async function loadDeviceActivityLogsData(scope = {}) {
        COALESCE(d.device_name, r.device_name, 'Thiết bị chưa xác định') AS device_name,
       COALESCE(dep.name, r.department_name, 'Chưa phân khoa') AS department_name,
       COALESCE(r.reporter_name, 'Không xác định') AS reporter_name,
-       r.issue_description,
-       r.technician_name,
+      r.issue_description,
+       r.assignee_user_id AS assignee_id,
+       assignee.username AS assignee_username,
+       assignee.full_name AS assignee_full_name,
        r.status,
        r.updated_at,
        r.created_at
      FROM repair_requests r
      LEFT JOIN devices d ON r.device_id = d.id
      LEFT JOIN departments dep ON d.department_id = dep.id
+     LEFT JOIN users assignee ON r.assignee_user_id = assignee.id
      ORDER BY r.id DESC
      LIMIT ${limit}`,
   ]

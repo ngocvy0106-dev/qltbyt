@@ -62,11 +62,12 @@ interface RepairItem {
   deviceId?: number | null
   device: string
   issue: string
-    reporter: string
+  reporter: string
   department: string
   priority: string
   status: RepairStatus
   technician: string
+  assigneeUserId?: number | null
   createdAt?: string | null
   startDate?: string | null
   estimatedEnd?: string | null
@@ -213,7 +214,7 @@ export function RepairPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [technicianOptions, setTechnicianOptions] = useState<TechnicianOption[]>([])
   const [selectedRepairItem, setSelectedRepairItem] = useState<RepairItem | null>(null)
-  const [selectedTechnicianName, setSelectedTechnicianName] = useState("")
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState("")
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false)
@@ -317,6 +318,27 @@ export function RepairPage() {
       const params = new URLSearchParams()
       if (search.trim()) {
         params.set("search", search.trim())
+      }
+
+      const role = String(loggedInUser.role || "").trim()
+      const requester = String(loggedInUser.fullName || "").trim()
+      const requesterAlt = String(loggedInUser.username || "").trim()
+
+      if (role) {
+        params.set("role", role)
+      }
+
+      if (requester) {
+        params.set("requester", requester)
+      }
+
+      if (requesterAlt) {
+        params.set("requesterAlt", requesterAlt)
+      }
+
+      const userId = String(loggedInUser.id || "").trim()
+      if (userId) {
+        params.set("userId", userId)
       }
 
       const response = await fetch(`${apiBaseUrl}/api/repairs?${params.toString()}`, {
@@ -516,7 +538,7 @@ export function RepairPage() {
 
   useEffect(() => {
     loadRepairData()
-  }, [apiBaseUrl, search])
+  }, [apiBaseUrl, search, loggedInUser.role, loggedInUser.fullName, loggedInUser.username, loggedInUser.id])
 
   useEffect(() => {
     const refreshRepairData = () => {
@@ -646,10 +668,11 @@ export function RepairPage() {
     const normalizedIssue = String(issueDescription || "").trim()
     const priorityValue = String(selectedPriority || "").trim() || "medium"
     const selectedDevice = deviceOptions.find((item) => Number(item.id) === deviceId)
-    const selectedTechnician = isAdminRole
+    const selectedAssignee = isAdminRole
       ? technicianOptions.find((item) => String(item.id) === selectedTechnicianId)
       : null
-    const technicianName = String(selectedTechnician?.name || "").trim()
+    const assigneeName = String(selectedAssignee?.name || "").trim()
+    const assigneeUserId = Number(selectedTechnicianId)
 
     if (!Number.isInteger(deviceId) || deviceId <= 0) {
       alert("Vui lòng chọn thiết bị")
@@ -666,7 +689,7 @@ export function RepairPage() {
       return
     }
 
-    if (isAdminRole && !technicianName) {
+    if (isAdminRole && !assigneeName) {
       alert("Vui lòng chọn nhân viên xử lý")
       return
     }
@@ -702,7 +725,7 @@ export function RepairPage() {
       console.log(`[DEBUG Frontend] POST succeeded with ID: ${responseData?.id}, Code: ${responseData?.requestCode}`)
       const requestCode = String(responseData?.requestCode || `RP${Date.now().toString().slice(-6)}`)
       const nowIso = new Date().toISOString()
-      const shouldAssignTechnician = Boolean(isAdminRole && technicianName && responseData?.id)
+      const shouldAssignTechnician = Boolean(isAdminRole && assigneeUserId > 0 && responseData?.id)
 
       if (shouldAssignTechnician) {
         const assignResponse = await fetch(`${apiBaseUrl}/api/repairs/${responseData?.id}/assign`, {
@@ -712,7 +735,7 @@ export function RepairPage() {
           },
           body: JSON.stringify({
             actorUserId: Number(loggedInUser.id || 0) || undefined,
-            technicianName,
+            assigneeUserId,
           }),
         })
 
@@ -733,7 +756,7 @@ export function RepairPage() {
           department: departmentName,
           priority: priorityValue,
           status: shouldAssignTechnician ? "assigned" : "pending",
-          technician: technicianName || "-",
+          technician: assigneeName || "-",
           createdAt: nowIso,
           progress: "-",
           part: "-",
@@ -835,8 +858,6 @@ export function RepairPage() {
         },
         body: JSON.stringify({
           actorUserId: Number(loggedInUser.id || 0) || undefined,
-          technicianName: String(loggedInUser.fullName || "").trim(),
-          technicianUsername: String(loggedInUser.username || "").trim(),
         }),
       })
 
@@ -874,10 +895,10 @@ export function RepairPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(
-          selectedTechnicianName.trim()
+          selectedAssigneeId.trim()
             ? {
                 actorUserId: Number(loggedInUser.id || 0) || undefined,
-                technicianName: selectedTechnicianName.trim(),
+                assigneeUserId: Number(selectedAssigneeId),
               }
             : {
                 actorUserId: Number(loggedInUser.id || 0) || undefined,
@@ -916,17 +937,17 @@ export function RepairPage() {
       return
     }
 
-    const technicianFullName = String(loggedInUser.fullName || "").trim()
-    const technicianUsername = String(loggedInUser.username || "").trim()
-    const technicianName = technicianFullName || technicianUsername
+    const assigneeName =
+      String(loggedInUser.fullName || "").trim() ||
+      String(loggedInUser.username || "").trim()
 
     const normalizedEstimatedEndDate = String(acceptEstimatedEndDate || "").trim()
     const normalizedMissingPartName = String(acceptMissingPartName || "").trim()
     const normalizedCostText = String(acceptEstimatedCost || "").trim().replace(/,/g, "")
     const estimatedCostValue = normalizedCostText ? Number(normalizedCostText) : 0
 
-    if (!technicianName) {
-      alert("Không xác định được tên nhân viên xử lý")
+    if (!assigneeName) {
+      alert("Không xác định được nhân viên xử lý")
       return
     }
 
@@ -955,8 +976,6 @@ export function RepairPage() {
         },
         body: JSON.stringify({
           actorUserId: Number(loggedInUser.id || 0) || undefined,
-          technicianName,
-          technicianUsername,
           estimatedEndDate: normalizedEstimatedEndDate,
           hasMissingParts: acceptHasMissingParts,
           missingPartName: acceptHasMissingParts ? normalizedMissingPartName : "",
@@ -979,7 +998,7 @@ export function RepairPage() {
             ? {
                 ...repairItem,
                 status: nextStatus,
-                technician: technicianName,
+                technician: assigneeName,
                 startDate: repairItem.startDate || nowIso,
                 estimatedEnd: normalizedEstimatedEndDate,
                 part: acceptHasMissingParts ? normalizedMissingPartName : repairItem.part,
@@ -1692,13 +1711,13 @@ export function RepairPage() {
 
             <div className="space-y-2">
               <Label>Nhân viên xử lý</Label>
-              <Select value={selectedTechnicianName || undefined} onValueChange={setSelectedTechnicianName}>
+              <Select value={selectedAssigneeId || undefined} onValueChange={setSelectedAssigneeId}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue placeholder="Chọn nhân viên xử lý" />
                 </SelectTrigger>
                 <SelectContent>
                   {technicianOptions.map((item) => (
-                    <SelectItem key={item.id} value={item.name}>
+                    <SelectItem key={item.id} value={String(item.id)}>
                       {item.name}
                     </SelectItem>
                   ))}
