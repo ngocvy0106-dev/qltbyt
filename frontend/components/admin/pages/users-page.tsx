@@ -203,6 +203,9 @@ export function UsersPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null)
   const [selectedDeleteUser, setSelectedDeleteUser] = useState<UserItem | null>(null)
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<"resetPassword" | "toggleLock" | null>(null)
+  const [confirmUser, setConfirmUser] = useState<UserItem | null>(null)
   const [editForm, setEditForm] = useState({
     name: "",
     username: "",
@@ -515,12 +518,17 @@ export function UsersPage() {
     }
   }
 
-  const handleResetPassword = async (user: UserItem) => {
-    const accepted = window.confirm(`Đặt lại mật khẩu cho ${user.username} về mặc định 123456?`)
-    if (!accepted) {
-      return
-    }
+  const openConfirmDialog = (action: "resetPassword" | "toggleLock", user: UserItem) => {
+    setConfirmAction(action)
+    setConfirmUser(user)
+    setIsConfirmDialogOpen(true)
+  }
 
+  const handleResetPassword = (user: UserItem) => {
+    openConfirmDialog("resetPassword", user)
+  }
+
+  const performResetPassword = async (user: UserItem) => {
     try {
       const response = await fetch(`${apiBaseUrl}/api/users/${user.id}/reset-password`, {
         method: "POST",
@@ -546,16 +554,12 @@ export function UsersPage() {
     }
   }
 
-  const handleToggleLockUser = async (user: UserItem) => {
+  const handleToggleLockUser = (user: UserItem) => {
+    openConfirmDialog("toggleLock", user)
+  }
+
+  const performToggleLockUser = async (user: UserItem) => {
     const currentlyLocked = isLockedStatus(user.status)
-    const accepted = window.confirm(
-      currentlyLocked
-        ? `Mở khóa tài khoản ${user.username}?`
-        : `Tạm khóa tài khoản ${user.username}?`
-    )
-    if (!accepted) {
-      return
-    }
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/users/${user.id}/lock`, {
@@ -576,6 +580,26 @@ export function UsersPage() {
     } catch {
       alert("Không thể kết nối server")
     }
+  }
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction || !confirmUser) {
+      setIsConfirmDialogOpen(false)
+      return
+    }
+
+    const action = confirmAction
+    const user = confirmUser
+    setIsConfirmDialogOpen(false)
+    setConfirmAction(null)
+    setConfirmUser(null)
+
+    if (action === "resetPassword") {
+      await performResetPassword(user)
+      return
+    }
+
+    await performToggleLockUser(user)
   }
 
   const handleDeleteDialogChange = (open: boolean) => {
@@ -625,6 +649,34 @@ export function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === "resetPassword"
+                ? "Đặt lại mật khẩu?"
+                : confirmAction === "toggleLock"
+                ? isLockedStatus(confirmUser?.status)
+                  ? "Mở khóa tài khoản?"
+                  : "Tạm khóa tài khoản?"
+                : "Xác nhận"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction === "resetPassword"
+                ? `Đặt lại mật khẩu cho ${confirmUser?.username} về mặc định 123456?`
+                : confirmAction === "toggleLock"
+                ? isLockedStatus(confirmUser?.status)
+                  ? `Mở khóa tài khoản ${confirmUser?.username}?`
+                  : `Tạm khóa tài khoản ${confirmUser?.username}?`
+                : "Bạn có chắc muốn thực hiện thao tác này?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsConfirmDialogOpen(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAction}>Xác nhận</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
         <AlertDialogContent>
           <AlertDialogHeader>

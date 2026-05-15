@@ -22,6 +22,16 @@ import { getDefaultPathByRole, isPathAllowedForRole } from "@/lib/role-access"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 
 interface MenuItem {
@@ -237,6 +247,7 @@ export function Sidebar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isProfileSaving, setIsProfileSaving] = useState(false)
   const [isPasswordFormOpen, setIsPasswordFormOpen] = useState(false)
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false)
   const [profileForm, setProfileForm] = useState({
     fullName: "",
     username: "",
@@ -674,13 +685,11 @@ export function Sidebar() {
     }
   }
 
+  const handleRequestLogout = () => {
+    setIsLogoutDialogOpen(true)
+  }
+
   const handleLogout = async () => {
-    const shouldLogout = window.confirm("Bạn có chắc chắn muốn đăng xuất?")
-
-    if (!shouldLogout) {
-      return
-    }
-
     try {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
       const userId = String(loggedInUser.id || "").trim()
@@ -875,11 +884,24 @@ export function Sidebar() {
         </div>
       </nav>
 
+      <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Đăng xuất?</AlertDialogTitle>
+            <AlertDialogDescription>Bạn có chắc chắn muốn đăng xuất không?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsLogoutDialogOpen(false)}>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout}>Đăng xuất</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Bottom section */}
       <div className="p-3 border-t border-sidebar-border">
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={handleRequestLogout}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
           <LogOut className="h-4 w-4" />
