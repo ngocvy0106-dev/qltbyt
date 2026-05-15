@@ -991,7 +991,7 @@ export function TransfersPage() {
         }
       }
 
-      alert(`Đã gửi ${selectedTransferDevices.length} yêu cầu điều chuyển`)
+      toast({ title: "Đã điều chuyển thiết bị", description: `Đã gửi ${selectedTransferDevices.length} yêu cầu điều chuyển` })
       setIsBulkTransferDialogOpen(false)
       setPageTab("requests")
       setActiveTab(isAdminUser ? "approved" : "pending")
