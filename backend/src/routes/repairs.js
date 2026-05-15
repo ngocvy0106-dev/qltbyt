@@ -508,6 +508,7 @@ router.put("/:id/assign", async (req, res) => {
         userId: actorUserId,
       })
     } else if (shouldMoveToInProgress) {
+      await updateDeviceStatusByRepairId(existingRows[0].device_id, "repairing")
       const deviceName = existingRows[0].device_name || "Thiết bị"
       const deviceCode = existingRows[0].device_code
       const serialLabel = deviceCode ? ` [${deviceCode}]` : ""
@@ -521,6 +522,7 @@ router.put("/:id/assign", async (req, res) => {
         userId: actorUserId,
       })
     } else {
+      await updateDeviceStatusByRepairId(existingRows[0].device_id, "repairing")
       const deviceName = existingRows[0].device_name || "Thiết bị"
       const deviceCode = existingRows[0].device_code
       const serialLabel = deviceCode ? ` [${deviceCode}]` : ""

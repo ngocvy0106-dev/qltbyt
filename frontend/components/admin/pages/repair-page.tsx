@@ -217,6 +217,11 @@ export function RepairPage() {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false)
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [confirmDialogTitle, setConfirmDialogTitle] = useState("")
+  const [confirmDialogMessage, setConfirmDialogMessage] = useState("")
+  const [confirmDialogAction, setConfirmDialogAction] = useState<"approve" | "complete" | null>(null)
+  const [confirmRepairItem, setConfirmRepairItem] = useState<RepairItem | null>(null)
   const [acceptRepairItem, setAcceptRepairItem] = useState<RepairItem | null>(null)
   const [acceptEstimatedEndDate, setAcceptEstimatedEndDate] = useState("")
   const [acceptHasMissingParts, setAcceptHasMissingParts] = useState(false)
@@ -706,6 +711,7 @@ export function RepairPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            actorUserId: Number(loggedInUser.id || 0) || undefined,
             technicianName,
           }),
         })
@@ -762,12 +768,24 @@ export function RepairPage() {
     }
   }
 
-  const handleApproveRepairTask = async (item: RepairItem) => {
-    const accepted = window.confirm(`Duyệt yêu cầu sửa chữa ${item.code}?`)
-    if (!accepted) {
-      return
-    }
+  const openConfirmDialog = (action: "approve" | "complete", item: RepairItem, title: string, message: string) => {
+    setConfirmDialogAction(action)
+    setConfirmRepairItem(item)
+    setConfirmDialogTitle(title)
+    setConfirmDialogMessage(message)
+    setIsConfirmDialogOpen(true)
+  }
 
+  const handleApproveRepairTask = (item: RepairItem) => {
+    openConfirmDialog(
+      "approve",
+      item,
+      `Duyệt yêu cầu sửa chữa ${item.code}?`,
+      "Bạn có chắc muốn duyệt yêu cầu sửa chữa này không?"
+    )
+  }
+
+  const performApproveRepairTask = async (item: RepairItem) => {
     try {
       setIsSubmitting(true)
 
@@ -777,6 +795,7 @@ export function RepairPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          actorUserId: Number(loggedInUser.id || 0) || undefined,
           status: "assigned",
         }),
       })
@@ -857,9 +876,11 @@ export function RepairPage() {
         body: JSON.stringify(
           selectedTechnicianName.trim()
             ? {
+                actorUserId: Number(loggedInUser.id || 0) || undefined,
                 technicianName: selectedTechnicianName.trim(),
               }
             : {
+                actorUserId: Number(loggedInUser.id || 0) || undefined,
                 status: "assigned",
               }
         ),
@@ -991,12 +1012,16 @@ export function RepairPage() {
     }
   }
 
-  const handleCompleteRepairTask = async (item: RepairItem) => {
-    const accepted = window.confirm(`Xác nhận hoàn thành công việc ${item.code}?`)
-    if (!accepted) {
-      return
-    }
+  const handleCompleteRepairTask = (item: RepairItem) => {
+    openConfirmDialog(
+      "complete",
+      item,
+      `Xác nhận hoàn thành công việc ${item.code}?`,
+      "Bạn có chắc muốn xác nhận hoàn thành công việc này không?"
+    )
+  }
 
+  const performCompleteRepairTask = async (item: RepairItem) => {
     try {
       setCompletingRepairId(item.id)
 
@@ -1043,6 +1068,28 @@ export function RepairPage() {
       alert("Không thể kết nối server")
     } finally {
       setCompletingRepairId(null)
+    }
+  }
+
+  const handleConfirmDialogSubmit = async () => {
+    if (!confirmDialogAction || !confirmRepairItem) {
+      setIsConfirmDialogOpen(false)
+      return
+    }
+
+    const action = confirmDialogAction
+    const item = confirmRepairItem
+    setIsConfirmDialogOpen(false)
+    setConfirmDialogAction(null)
+    setConfirmRepairItem(null)
+
+    if (action === "approve") {
+      await performApproveRepairTask(item)
+      return
+    }
+
+    if (action === "complete") {
+      await performCompleteRepairTask(item)
     }
   }
 
@@ -1269,6 +1316,29 @@ export function RepairPage() {
         </Dialog>
         )}
       </div>
+
+      <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle>{confirmDialogTitle || "Xác nhận"}</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            {confirmDialogMessage || "Bạn có chắc muốn thực hiện thao tác này?"}
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              className="bg-primary text-primary-foreground"
+              onClick={handleConfirmDialogSubmit}
+              disabled={isSubmitting || completingRepairId !== null}
+            >
+              Xác nhận
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats */}
       {(isAdminRole || isDepartmentEmployee) && (
