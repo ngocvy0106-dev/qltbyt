@@ -1079,7 +1079,7 @@ export function RepairPage() {
               onClick={handleOpenCreateDialog}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Tạo yêu cầu sửa chữa
+              {isAdminRole ? "Tạo lịch sửa chữa" : "Tạo yêu cầu sửa chữa"}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border max-w-2xl">

@@ -747,6 +747,10 @@ router.get("/", async (req, res) => {
       }
     }
 
+    if (isEmployeeRequest && employeeWhereParts.length === 0) {
+      return res.json({ devices: [] })
+    }
+
     const employeeWhereClause = employeeWhereParts.length
       ? `WHERE (${employeeWhereParts.join(" OR ")})`
       : ""
