@@ -310,14 +310,14 @@ router.get("/", async (req, res) => {
         result: row.resolution_result || "Thành công",
       }))
       .filter((item) => {
-        if (isEmployee) {
-          if (!normalizedRequesterUserId) {
-            return false
-          }
-
+        // If a specific user id is provided (header or query), only return items assigned to that user.
+        if (normalizedRequesterUserId) {
           if (!Number.isInteger(item.assigneeUserId) || item.assigneeUserId !== normalizedRequesterUserId) {
             return false
           }
+        } else if (isEmployee) {
+          // Role indicates an employee but we couldn't resolve a user id — deny access to employee-specific list.
+          return false
         }
 
         if (!search) {
