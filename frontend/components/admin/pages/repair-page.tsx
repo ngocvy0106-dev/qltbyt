@@ -32,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Search,
   Plus,
@@ -611,6 +612,8 @@ export function RepairPage() {
     String(selectedDepartmentName || loggedInUser.departmentName || loggedInUser.department || "").trim() ||
     "Chưa xác định"
 
+  const shouldShowDepartmentLists = Boolean(selectedDepartmentName)
+
   const showRequestActionsColumn = isAdminRole || isDepartmentEmployee
 
   const handleOpenCreateDialog = () => {
@@ -1139,22 +1142,32 @@ export function RepairPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Thiết bị</Label>
-                  <Select value={selectedDeviceId || undefined} onValueChange={setSelectedDeviceId}>
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Chọn thiết bị" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  {shouldShowDepartmentLists ? (
+                    <div className="space-y-2 rounded-lg border border-border bg-secondary/40 p-3 max-h-40 overflow-auto">
                       {filteredDeviceOptions.length === 0 ? (
-                        <SelectItem value="__empty" disabled>
-                          Không có thiết bị khả dụng trong khoa đã chọn
-                        </SelectItem>
-                      ) : filteredDeviceOptions.map((item) => (
-                        <SelectItem key={item.id} value={String(item.id)}>
-                          {`${String(item.code || "").trim() || "Không mã"} - ${item.name}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        <div className="text-sm text-muted-foreground">Không có thiết bị khả dụng trong khoa đã chọn</div>
+                      ) : filteredDeviceOptions.map((item) => {
+                        const deviceId = String(item.id)
+                        const deviceLabel = `${String(item.code || "").trim() || "Không mã"} - ${item.name}`
+
+                        return (
+                          <label key={item.id} className="flex items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={selectedDeviceId === deviceId}
+                              onCheckedChange={(checked) =>
+                                setSelectedDeviceId(checked ? deviceId : "")
+                              }
+                            />
+                            <span className="truncate" title={deviceLabel}>{deviceLabel}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border bg-secondary/40 p-3 text-sm text-muted-foreground">
+                      Chọn khoa/phòng để xem thiết bị
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Độ ưu tiên</Label>
@@ -1221,22 +1234,27 @@ export function RepairPage() {
               {isAdminRole && (
                 <div className="space-y-2">
                   <Label>Nhân viên xử lý</Label>
-                  <Select value={selectedTechnicianId || undefined} onValueChange={setSelectedTechnicianId}>
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Chọn nhân viên" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  {shouldShowDepartmentLists ? (
+                    <div className="space-y-2 rounded-lg border border-border bg-secondary/40 p-3 max-h-40 overflow-auto">
                       {filteredTechnicianOptions.length === 0 ? (
-                        <SelectItem value="__empty" disabled>
-                          Không có nhân viên trong khoa đã chọn
-                        </SelectItem>
+                        <div className="text-sm text-muted-foreground">Không có nhân viên trong khoa đã chọn</div>
                       ) : filteredTechnicianOptions.map((item) => (
-                        <SelectItem key={item.id} value={String(item.id)}>
-                          {item.name}
-                        </SelectItem>
+                        <label key={item.id} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={selectedTechnicianId === String(item.id)}
+                            onCheckedChange={(checked) =>
+                              setSelectedTechnicianId(checked ? String(item.id) : "")
+                            }
+                          />
+                          <span className="truncate" title={item.name}>{item.name}</span>
+                        </label>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border bg-secondary/40 p-3 text-sm text-muted-foreground">
+                      Chọn khoa/phòng để xem nhân viên
+                    </div>
+                  )}
                 </div>
               )}
               <Button
