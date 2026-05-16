@@ -340,6 +340,18 @@ router.get("/", async (req, res) => {
     // fallback: client provided reporter name via query param
     const requesterQueryName = String(req.query.requester || req.query.requesterAlt || "").trim()
     const normalizedRequesterQueryName = requesterQueryName ? normalizeComparableText(requesterQueryName) : null
+    const requesterQueryTokens = [req.query.requester, req.query.requesterAlt]
+      .map((value) => normalizeComparableText(value))
+      .filter(Boolean)
+
+    function matchesRequesterToken(value) {
+      const normalizedValue = normalizeComparableText(value)
+      if (!normalizedValue) {
+        return false
+      }
+
+      return requesterQueryTokens.some((token) => token === normalizedValue)
+    }
 
     const mappedRows = rows.map((row) => ({
         id: row.id,
@@ -408,12 +420,14 @@ router.get("/", async (req, res) => {
               return false
             }
           } else if (normalizedRequesterQueryName) {
-            // No numeric user id available; fall back to matching the reporter name
-            // provided by client via `requester`/`requesterAlt` query param.
-            const isAssigned = Number.isInteger(item.assigneeUserId) && item.assigneeUserId === (Number(req.query.userId || 0) || null)
-            const itemReporterNorm = item.reporter ? normalizeComparableText(item.reporter) : null
-            const isReporter = itemReporterNorm && itemReporterNorm === normalizedRequesterQueryName
-            if (!isAssigned && !isReporter) {
+            // No numeric user id available; fall back to matching the reporter or assignee
+            // name/username provided by client via `requester`/`requesterAlt` query params.
+            const isReporter = matchesRequesterToken(item.reporter)
+            const isAssigneeName = matchesRequesterToken(item.technician)
+            const isAssigneeFullName = matchesRequesterToken(item.assignee?.full_name)
+            const isAssigneeUsername = matchesRequesterToken(item.assignee?.username)
+
+            if (!isReporter && !isAssigneeName && !isAssigneeFullName && !isAssigneeUsername) {
               return false
             }
           } else {
