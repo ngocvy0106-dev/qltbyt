@@ -175,8 +175,7 @@ async function updateDeviceStatusByRepairId(deviceId, status) {
 router.get("/", async (req, res) => {
   try {
     const search = String(req.query.search || "").trim().toLowerCase()
-    // Prefer role from header (if client provides), then query.
-    const role = String(req.headers["x-user-role"] || req.headers["x_user_role"] || req.query.role || "").trim()
+    const role = String(req.query.role || "").trim()
     const isEmployee = isNhanVienRole(role)
 
     // Prefer explicit header `x-user-id` when available (client may send it).
@@ -185,15 +184,7 @@ router.get("/", async (req, res) => {
     const headerUserId = Number(req.headers["x-user-id"] || req.headers["x_user_id"] || 0)
     const resolvedUserId = Number.isInteger(headerUserId) && headerUserId > 0 ? headerUserId : (Number.isInteger(queryUserId) && queryUserId > 0 ? queryUserId : 0)
     const normalizedRequesterUserId = Number.isInteger(resolvedUserId) && resolvedUserId > 0 ? resolvedUserId : null
-    console.log(`[DEBUG] GET /api/repairs requesterUserId query=${queryUserId} header=${headerUserId} resolved=${normalizedRequesterUserId} role=${role}`)
-
-    // Security: if request is not from an admin and no user id is provided, return empty list
-    // to avoid leaking other employees' repairs when role or user id is missing.
-    const isAdminRole = String(role || "").toLowerCase().includes("admin")
-    if (!isAdminRole && !normalizedRequesterUserId) {
-      console.log(`[DEBUG] GET /api/repairs denied: non-admin without user id`)
-      return res.json({ items: [], summary: { pending: 0, inProgress: 0, waitingParts: 0, completedThisMonth: 0 } })
-    }
+    console.log(`[DEBUG] GET /api/repairs requesterUserId query=${queryUserId} header=${headerUserId} resolved=${normalizedRequesterUserId}`)
 
     const queryVariants = [
       `SELECT
