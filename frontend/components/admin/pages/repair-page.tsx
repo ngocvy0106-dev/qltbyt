@@ -1521,10 +1521,30 @@ export function RepairPage() {
                       <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
                       {showRequestActionsColumn && (
                         <TableCell className="text-center">
-                          {item.createdByIsAdmin ? (
-                            <span className="text-primary inline-flex items-center justify-center h-8 w-8 rounded-full">
-                              <CheckCircle className="h-4 w-4" />
-                            </span>
+                          {isAdminRole ? (
+                            item.createdByIsAdmin ? (
+                              <span className="text-primary inline-flex items-center justify-center h-8 w-8 rounded-full">
+                                <CheckCircle className="h-4 w-4" />
+                              </span>
+                            ) : (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-card border-border">
+                                  {item.status === "pending" && (
+                                    <DropdownMenuItem className="gap-2" onClick={() => handleApproveRepairTask(item)}>
+                                      <CheckCircle className="h-4 w-4" /> Duyệt
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem className="gap-2" onClick={() => handleOpenDetailDialog(item)}>
+                                    <Eye className="h-4 w-4" /> Xem chi tiết
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )
                           ) : isDepartmentEmployee ? (
                             item.status === "assigned" ? (
                               <Button
@@ -1540,24 +1560,6 @@ export function RepairPage() {
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )
-                          ) : isAdminRole ? (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-card border-border">
-                                {item.status === "pending" && (
-                                  <DropdownMenuItem className="gap-2" onClick={() => handleApproveRepairTask(item)}>
-                                    <CheckCircle className="h-4 w-4" /> Duyệt
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem className="gap-2" onClick={() => handleOpenDetailDialog(item)}>
-                                  <Eye className="h-4 w-4" /> Xem chi tiết
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
