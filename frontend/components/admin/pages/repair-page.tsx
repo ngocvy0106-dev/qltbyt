@@ -346,7 +346,6 @@ export function RepairPage() {
         cache: "no-store",
         headers: {
           "x-user-id": String(loggedInUser.id || ""),
-          "x-user-role": String(loggedInUser.role || ""),
         },
       })
 
