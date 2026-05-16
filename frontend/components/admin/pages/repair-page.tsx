@@ -344,6 +344,10 @@ export function RepairPage() {
 
       const response = await fetch(`${apiBaseUrl}/api/repairs?${params.toString()}`, {
         cache: "no-store",
+        headers: {
+          "x-user-id": String(loggedInUser.id || ""),
+          "x-user-role": String(loggedInUser.role || ""),
+        },
       })
 
       if (!response.ok) {
