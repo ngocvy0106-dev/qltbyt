@@ -219,8 +219,8 @@ async function updateDeviceStatusByRepairId(deviceId, status) {
 router.get("/", async (req, res) => {
   try {
     const search = String(req.query.search || "").trim().toLowerCase()
-    const role = String(req.query.role || "").trim()
-    const isEmployee = isNhanVienRole(role)
+    let role = String(req.query.role || "").trim()
+    let isEmployee = isNhanVienRole(role)
 
     // Prefer explicit header `x-user-id` when available (client may send it).
     // Fallback to query `userId` if header is not present.
@@ -228,6 +228,25 @@ router.get("/", async (req, res) => {
     const headerUserId = Number(req.headers["x-user-id"] || req.headers["x_user_id"] || 0)
     const resolvedUserId = Number.isInteger(headerUserId) && headerUserId > 0 ? headerUserId : (Number.isInteger(queryUserId) && queryUserId > 0 ? queryUserId : 0)
     const normalizedRequesterUserId = Number.isInteger(resolvedUserId) && resolvedUserId > 0 ? resolvedUserId : null
+    // If role param not provided or doesn't indicate employee, but a userId was supplied,
+    // try to resolve the user's role from DB to decide employee-scoped filtering.
+    if (!isEmployee && normalizedRequesterUserId) {
+      try {
+        const [roleRows] = await pool.query(
+          `SELECT rr.role_name FROM users u LEFT JOIN role rr ON u.role_id = rr.id WHERE u.id = ? LIMIT 1`,
+          [normalizedRequesterUserId]
+        )
+        if (Array.isArray(roleRows) && roleRows.length) {
+          const resolvedRoleName = String(roleRows[0].role_name || "").trim()
+          if (resolvedRoleName) {
+            role = resolvedRoleName
+            isEmployee = isNhanVienRole(resolvedRoleName)
+          }
+        }
+      } catch (e) {
+        // ignore DB lookup errors and keep previous isEmployee value
+      }
+    }
     console.log(`[DEBUG] GET /api/repairs requesterUserId query=${queryUserId} header=${headerUserId} resolved=${normalizedRequesterUserId}`)
 
     const queryVariants = [
