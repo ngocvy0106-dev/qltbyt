@@ -235,6 +235,19 @@ export function RepairPage() {
   const [mounted, setMounted] = useState(false)
   const prevDataJsonRef = useRef<string | null>(null)
 
+  // Debug fetch wrapper: logs localStorage.user, loggedInUser and the request
+  const fetchWithDebug = async (input: RequestInfo, init?: RequestInit) => {
+    try {
+      const stored = typeof window !== "undefined" ? localStorage.getItem("user") : null
+      // shallow-copy headers for safer logging
+      const headers = init && init.headers ? init.headers : undefined
+      console.log("[DEBUG Frontend] fetch", input, { headers, stored, loggedInUser })
+    } catch (e) {
+      // ignore logging errors
+    }
+    return fetch(input, init)
+  }
+
   const isDepartmentEmployee = useMemo(() => {
     const roleText = normalizeText(loggedInUser.role || "")
     return roleText.includes("nhan vien") || roleText.includes("nhan-vien")
@@ -342,7 +355,7 @@ export function RepairPage() {
         params.set("userId", userId)
       }
 
-      const response = await fetch(`${apiBaseUrl}/api/repairs?${params.toString()}`, {
+      const response = await fetchWithDebug(`${apiBaseUrl}/api/repairs?${params.toString()}`, {
         cache: "no-store",
         headers: {
           "x-user-id": String(loggedInUser.id || ""),
@@ -738,7 +751,7 @@ export function RepairPage() {
     try {
       setIsSubmitting(true)
 
-      const response = await fetch(`${apiBaseUrl}/api/repairs`, {
+      const response = await fetchWithDebug(`${apiBaseUrl}/api/repairs`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -769,7 +782,7 @@ export function RepairPage() {
       const shouldAssignTechnician = Boolean(isAdminRole && assigneeUserId > 0 && responseData?.id)
 
       if (shouldAssignTechnician) {
-        const assignResponse = await fetch(`${apiBaseUrl}/api/repairs/${responseData?.id}/assign`, {
+        const assignResponse = await fetchWithDebug(`${apiBaseUrl}/api/repairs/${responseData?.id}/assign`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -853,7 +866,7 @@ export function RepairPage() {
     try {
       setIsSubmitting(true)
 
-      const response = await fetch(`${apiBaseUrl}/api/repairs/${item.id}/assign`, {
+      const response = await fetchWithDebug(`${apiBaseUrl}/api/repairs/${item.id}/assign`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -892,7 +905,7 @@ export function RepairPage() {
     try {
       setIsSubmitting(true)
 
-      const response = await fetch(`${apiBaseUrl}/api/repairs/${item.id}/confirm`, {
+      const response = await fetchWithDebug(`${apiBaseUrl}/api/repairs/${item.id}/confirm`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
