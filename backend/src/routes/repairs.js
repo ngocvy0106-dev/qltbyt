@@ -3,6 +3,7 @@ const { pool } = require("../db")
 const { logActivity } = require("../activity")
 
 const router = express.Router()
+const { emitter, emitRepairEvent } = require("../sse")
 
 function normalizeStatus(value) {
   const text = String(value || "").trim().toLowerCase()
@@ -740,6 +741,10 @@ router.put("/:id/assign", async (req, res) => {
         entityId: id,
         userId: actorUserId,
       })
+      // notify interested clients that a repair was approved/assigned
+      try {
+        emitRepairEvent({ id, status: "assigned", assigneeUserId: null })
+      } catch (e) {}
     } else if (shouldMoveToInProgress) {
       await updateDeviceStatusByRepairId(existingRows[0].device_id, "repairing")
       const deviceName = existingRows[0].device_name || "Thiết bị"
@@ -755,6 +760,9 @@ router.put("/:id/assign", async (req, res) => {
         entityId: id,
         userId: actorUserId,
       })
+      try {
+        emitRepairEvent({ id, status: "in_progress", assigneeUserId: assigneeUserId || null })
+      } catch (e) {}
     } else {
       await updateDeviceStatusByRepairId(existingRows[0].device_id, "repairing")
       const deviceName = existingRows[0].device_name || "Thiết bị"
@@ -770,6 +778,9 @@ router.put("/:id/assign", async (req, res) => {
         entityId: id,
         userId: actorUserId,
       })
+      try {
+        emitRepairEvent({ id, status: "assigned", assigneeUserId: assigneeUserId || null })
+      } catch (e) {}
     }
 
     return res.json({ ok: true })
@@ -1379,6 +1390,42 @@ router.put("/:id/complete", async (req, res) => {
 
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
   }
+})
+
+// Server-Sent Events stream for repairs updates
+router.get("/stream", (req, res) => {
+  // Use simple query params to scope events: ?userId=123&role=admin
+  const userId = Number(req.query.userId || 0)
+  const role = String(req.query.role || "").trim()
+
+  res.writeHead(200, {
+    Connection: "keep-alive",
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+  })
+
+  const onRepair = (payload) => {
+    try {
+      // If role is admin, send everything; otherwise only send events for the user's assignee id
+      if (role && role.toLowerCase().includes("admin")) {
+        res.write(`event: repair\ndata: ${JSON.stringify(payload)}\n\n`)
+        return
+      }
+
+      if (userId && payload && Number(payload.assigneeUserId || 0) === Number(userId)) {
+        res.write(`event: repair\ndata: ${JSON.stringify(payload)}\n\n`)
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  emitter.on("repair", onRepair)
+
+  // cleanup on client disconnect
+  req.on("close", () => {
+    emitter.off("repair", onRepair)
+  })
 })
 
 module.exports = router

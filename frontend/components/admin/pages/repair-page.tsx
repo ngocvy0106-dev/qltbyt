@@ -574,6 +574,35 @@ export function RepairPage() {
     loadRepairData()
   }, [apiBaseUrl, search, loggedInUser.role, loggedInUser.fullName, loggedInUser.username, loggedInUser.id])
 
+  useEffect(() => {
+    if (!mounted) return
+
+    try {
+      const userId = String(loggedInUser.id || "")
+      const role = String(loggedInUser.role || "")
+      const streamUrl = `${apiBaseUrl}/api/repairs/stream?userId=${encodeURIComponent(userId)}&role=${encodeURIComponent(role)}`
+      // EventSource doesn't support custom headers; use query params for scoping
+      const es = typeof EventSource !== "undefined" ? new EventSource(streamUrl) : null
+
+      if (!es) return
+
+      const onRepair = () => {
+        void loadRepairData()
+      }
+
+      es.addEventListener("repair", onRepair)
+
+      return () => {
+        try {
+          es.removeEventListener("repair", onRepair)
+          es.close()
+        } catch (e) {}
+      }
+    } catch (e) {
+      // ignore if EventSource not available
+    }
+  }, [apiBaseUrl, mounted, loggedInUser.id, loggedInUser.role])
+
   // Auto-reload removed: data will refresh only on initial load and when
   // meaningful dependencies change (search, user, etc.). This prevents
   // unexpected switching between employees due to frequent polling.
