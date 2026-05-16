@@ -324,6 +324,10 @@ router.get("/", async (req, res) => {
 
     // If we have a requester user id, resolve their display name to allow
     // employees to see items they reported (not only those assigned to them).
+    // Additionally, allow clients to pass `requester` or `requesterAlt` query
+    // when a numeric user id/header is not available (EventSource or proxies
+    // may strip custom headers). This preserves employee scoping while being
+    // more robust when `x-user-id` is not present.
     let requesterDisplay = null
     if (normalizedRequesterUserId) {
       try {
@@ -332,6 +336,10 @@ router.get("/", async (req, res) => {
         requesterDisplay = null
       }
     }
+
+    // fallback: client provided reporter name via query param
+    const requesterQueryName = String(req.query.requester || req.query.requesterAlt || "").trim()
+    const normalizedRequesterQueryName = requesterQueryName ? normalizeComparableText(requesterQueryName) : null
 
     const mappedRows = rows.map((row) => ({
         id: row.id,
@@ -399,8 +407,18 @@ router.get("/", async (req, res) => {
             if (!isAssigned && !isReporter) {
               return false
             }
+          } else if (normalizedRequesterQueryName) {
+            // No numeric user id available; fall back to matching the reporter name
+            // provided by client via `requester`/`requesterAlt` query param.
+            const isAssigned = Number.isInteger(item.assigneeUserId) && item.assigneeUserId === (Number(req.query.userId || 0) || null)
+            const itemReporterNorm = item.reporter ? normalizeComparableText(item.reporter) : null
+            const isReporter = itemReporterNorm && itemReporterNorm === normalizedRequesterQueryName
+            if (!isAssigned && !isReporter) {
+              return false
+            }
           } else {
-            // Role indicates an employee but we couldn't resolve a user id — deny access to employee-specific list.
+            // Role indicates an employee but we couldn't resolve a user id or reporter name — deny access.
+            console.log(`[DEBUG] DENY employee access - missing user id and requester for role=${role}`)
             return false
           }
         }
