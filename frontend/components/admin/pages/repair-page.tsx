@@ -632,10 +632,7 @@ export function RepairPage() {
           (item) => normalizeText(String(item.departmentName || "")) === departmentText
         )
 
-    if (!isDepartmentEmployee) {
-      return byDepartment
-    }
-
+    // Exclude devices that already have an open (non-completed) repair request
     return byDepartment.filter((item) => !openRepairDeviceIds.has(Number(item.id)))
   }, [deviceOptions, selectedDepartmentName, items, isDepartmentEmployee])
 
