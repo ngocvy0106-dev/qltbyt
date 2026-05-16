@@ -574,28 +574,9 @@ export function RepairPage() {
     loadRepairData()
   }, [apiBaseUrl, search, loggedInUser.role, loggedInUser.fullName, loggedInUser.username, loggedInUser.id])
 
-  useEffect(() => {
-    const refreshRepairData = () => {
-      void loadRepairData()
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        refreshRepairData()
-      }
-    }
-
-    window.addEventListener("focus", refreshRepairData)
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-
-    const intervalId = window.setInterval(refreshRepairData, 8000)
-
-    return () => {
-      window.removeEventListener("focus", refreshRepairData)
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-      window.clearInterval(intervalId)
-    }
-  }, [apiBaseUrl, search])
+  // Auto-reload removed: data will refresh only on initial load and when
+  // meaningful dependencies change (search, user, etc.). This prevents
+  // unexpected switching between employees due to frequent polling.
 
   useEffect(() => {
     const tab = searchParams.get("tab")
