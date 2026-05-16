@@ -274,6 +274,17 @@ router.get("/", async (req, res) => {
       console.log(`[DEBUG] Latest repair IDs: ${rows.slice(-3).map(r => r.id).join(', ')}`)
     }
 
+    // If we have a requester user id, resolve their display name to allow
+    // employees to see items they reported (not only those assigned to them).
+    let requesterDisplay = null
+    if (normalizedRequesterUserId) {
+      try {
+        requesterDisplay = await loadUserDisplayName(normalizedRequesterUserId)
+      } catch (e) {
+        requesterDisplay = null
+      }
+    }
+
     const items = rows
       .map((row) => ({
         id: row.id,
@@ -311,22 +322,19 @@ router.get("/", async (req, res) => {
         result: row.resolution_result || "Thành công",
       }))
       .filter((item) => {
-        // Only employees are scoped to their own assigned repairs.
+        // Only employees are scoped to their own assigned repairs or repairs they reported.
         // Admins should see all repairs even if a `userId` header/query is present.
         if (isEmployee) {
           if (normalizedRequesterUserId) {
-            if (!Number.isInteger(item.assigneeUserId) || item.assigneeUserId !== normalizedRequesterUserId) {
+            const isAssigned = Number.isInteger(item.assigneeUserId) && item.assigneeUserId === normalizedRequesterUserId
+            const isReporter = requesterDisplay && typeof requesterDisplay.name === 'string' && item.reporter && item.reporter.trim() === requesterDisplay.name.trim()
+            if (!isAssigned && !isReporter) {
               return false
             }
           } else {
             // Role indicates an employee but we couldn't resolve a user id — deny access to employee-specific list.
             return false
           }
-        } else if (!isEmployee && normalizedRequesterUserId && String(role || "").trim()) {
-          // Non-employee roles are not filtered by `userId`.
-        } else if (isEmployee) {
-          // Role indicates an employee but we couldn't resolve a user id — deny access to employee-specific list.
-          return false
         }
 
         if (!search) {
