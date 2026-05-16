@@ -80,8 +80,6 @@ interface RepairItem {
   completedDate?: string | null
   completedTime?: string | null
   result: string
-  createdByUserId?: number | null
-  createdByIsAdmin?: boolean
 }
 
 interface RepairsSummary {
@@ -247,9 +245,6 @@ export function RepairPage() {
     return roleText.includes("admin")
   }, [loggedInUser.role])
 
-  // Only show the technician column for admins
-  const showTechnicianColumn = isAdminRole
-
   const formatDate = (value?: string | null) => {
     if (!value) {
       return "-"
@@ -384,7 +379,6 @@ export function RepairPage() {
           assigneeUserId: it.assigneeUserId,
           technician: it.technician,
           createdAt: it.createdAt,
-          createdByIsAdmin: Boolean(it.createdByIsAdmin || false),
         }))
 
         const newJson = JSON.stringify({ items: stableItems, summary: summaryRes })
@@ -1521,31 +1515,7 @@ export function RepairPage() {
                       <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
                       {showRequestActionsColumn && (
                         <TableCell className="text-center">
-                          {isAdminRole ? (
-                            item.createdByIsAdmin ? (
-                              <span className="text-primary inline-flex items-center justify-center h-8 w-8 rounded-full">
-                                <CheckCircle className="h-4 w-4" />
-                              </span>
-                            ) : (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="bg-card border-border">
-                                  {item.status === "pending" && (
-                                    <DropdownMenuItem className="gap-2" onClick={() => handleApproveRepairTask(item)}>
-                                      <CheckCircle className="h-4 w-4" /> Duyệt
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem className="gap-2" onClick={() => handleOpenDetailDialog(item)}>
-                                    <Eye className="h-4 w-4" /> Xem chi tiết
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )
-                          ) : isDepartmentEmployee ? (
+                          {isDepartmentEmployee ? (
                             item.status === "assigned" ? (
                               <Button
                                 variant="ghost"
@@ -1560,6 +1530,24 @@ export function RepairPage() {
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )
+                          ) : isAdminRole ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-card border-border">
+                                {item.status === "pending" && (
+                                  <DropdownMenuItem className="gap-2" onClick={() => handleApproveRepairTask(item)}>
+                                    <CheckCircle className="h-4 w-4" /> Duyệt
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem className="gap-2" onClick={() => handleOpenDetailDialog(item)}>
+                                  <Eye className="h-4 w-4" /> Xem chi tiết
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
@@ -1577,12 +1565,12 @@ export function RepairPage() {
           <Card className="bg-card border-border">
             <CardContent className="p-0">
               <Table>
-                  <TableHeader>
+                <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="text-center text-muted-foreground">Mã</TableHead>
                     <TableHead className="text-center text-muted-foreground">Thiết bị</TableHead>
                     <TableHead className="text-center text-muted-foreground">Sự cố</TableHead>
-                    {showTechnicianColumn && <TableHead className="text-center text-muted-foreground">Nhân viên xử lý</TableHead>}
+                    <TableHead className="text-center text-muted-foreground">Nhân viên xử lý</TableHead>
                     <TableHead className="text-center text-muted-foreground">Bắt đầu</TableHead>
                     <TableHead className="text-center text-muted-foreground">Tiến độ</TableHead>
                     {isDepartmentEmployee && (
@@ -1593,12 +1581,12 @@ export function RepairPage() {
                 <TableBody>
                   {isLoading && (
                     <TableRow className="border-border">
-                      <TableCell colSpan={(showTechnicianColumn ? 6 : 5) + (isDepartmentEmployee ? 1 : 0)} className="py-8 text-center text-muted-foreground">Đang tải dữ liệu sửa chữa...</TableCell>
+                      <TableCell colSpan={isDepartmentEmployee ? 7 : 6} className="py-8 text-center text-muted-foreground">Đang tải dữ liệu sửa chữa...</TableCell>
                     </TableRow>
                   )}
                   {!isLoading && inProgressItems.length === 0 && (
                     <TableRow className="border-border">
-                      <TableCell colSpan={(showTechnicianColumn ? 6 : 5) + (isDepartmentEmployee ? 1 : 0)} className="py-8 text-center text-muted-foreground">Không có yêu cầu đang sửa</TableCell>
+                      <TableCell colSpan={isDepartmentEmployee ? 7 : 6} className="py-8 text-center text-muted-foreground">Không có yêu cầu đang sửa</TableCell>
                     </TableRow>
                   )}
                   {!isLoading && inProgressItems.map((item) => (
@@ -1606,7 +1594,7 @@ export function RepairPage() {
                       <TableCell className="text-center"><Badge variant="outline" className="font-mono">{item.code}</Badge></TableCell>
                       <TableCell className="text-center font-medium">{item.device}</TableCell>
                       <TableCell className="text-center max-w-[150px] truncate">{item.issue}</TableCell>
-                      {showTechnicianColumn && <TableCell className="text-center">{item.technician}</TableCell>}
+                      <TableCell className="text-center">{item.technician}</TableCell>
                       <TableCell className="text-center">{formatDateTime(item.startDate)}</TableCell>
                       <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
                       {isDepartmentEmployee && (
@@ -1639,7 +1627,7 @@ export function RepairPage() {
                     <TableHead className="text-center text-muted-foreground">Mã</TableHead>
                     <TableHead className="text-center text-muted-foreground">Thiết bị</TableHead>
                     <TableHead className="text-center text-muted-foreground">Sự cố</TableHead>
-                    {showTechnicianColumn && <TableHead className="text-center text-muted-foreground">Nhân viên xử lý</TableHead>}
+                    <TableHead className="text-center text-muted-foreground">Nhân viên xử lý</TableHead>
                     <TableHead className="text-center text-muted-foreground">Hoàn thành</TableHead>
                     <TableHead className="text-center text-muted-foreground">Thời gian</TableHead>
                     <TableHead className="text-center text-muted-foreground">Kết quả</TableHead>
@@ -1648,12 +1636,12 @@ export function RepairPage() {
                 <TableBody>
                   {isLoading && (
                     <TableRow className="border-border">
-                      <TableCell colSpan={showTechnicianColumn ? 7 : 6} className="py-8 text-center text-muted-foreground">Đang tải dữ liệu sửa chữa...</TableCell>
+                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Đang tải dữ liệu sửa chữa...</TableCell>
                     </TableRow>
                   )}
                   {!isLoading && historyItems.length === 0 && (
                     <TableRow className="border-border">
-                      <TableCell colSpan={showTechnicianColumn ? 7 : 6} className="py-8 text-center text-muted-foreground">Chưa có lịch sử sửa chữa</TableCell>
+                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Chưa có lịch sử sửa chữa</TableCell>
                     </TableRow>
                   )}
                   {!isLoading && historyItems.map((item) => (
@@ -1661,7 +1649,7 @@ export function RepairPage() {
                       <TableCell className="text-center"><Badge variant="outline" className="font-mono">{item.code}</Badge></TableCell>
                       <TableCell className="text-center font-medium">{item.device}</TableCell>
                       <TableCell className="text-center">{item.issue}</TableCell>
-                      {showTechnicianColumn && <TableCell className="text-center">{item.technician}</TableCell>}
+                      <TableCell className="text-center">{item.technician}</TableCell>
                       <TableCell className="text-center">{formatDate(item.completedDate)}</TableCell>
                       <TableCell className="text-center">{formatDateTime(item.completedTime || item.completedDate)}</TableCell>
                       <TableCell className="text-center">
