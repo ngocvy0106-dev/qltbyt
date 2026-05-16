@@ -380,6 +380,7 @@ router.post("/", async (req, res) => {
       reporterName,
       departmentName,
       priority,
+      assigneeUserId: rawAssigneeUserId,
     } = req.body || {}
 
     const normalizedDeviceId = Number(deviceId)
@@ -387,6 +388,7 @@ router.post("/", async (req, res) => {
     const normalizedReporter = String(reporterName || "").trim()
     const normalizedDepartment = String(departmentName || "").trim()
     const normalizedPriority = normalizePriority(priority)
+    const assigneeUserId = Number(rawAssigneeUserId || 0)
 
     if (!Number.isInteger(normalizedDeviceId) || normalizedDeviceId <= 0) {
       return res.status(400).json({ message: "Thiết bị không hợp lệ" })
@@ -470,6 +472,37 @@ router.post("/", async (req, res) => {
       throw lastError
     }
 
+    // If an assignee is provided at creation time, set it and mark assigned
+    const normalizedAssigneeUserId = Number.isInteger(assigneeUserId) && assigneeUserId > 0 ? assigneeUserId : null
+    if (normalizedAssigneeUserId) {
+      // verify user exists
+      try {
+        const assignee = await loadUserDisplayName(normalizedAssigneeUserId)
+        if (!assignee) {
+          // ignore assignment if user not found
+          console.log(`[DEBUG] POST /api/repairs new insert ${insertId} - assignee ${normalizedAssigneeUserId} not found`)
+        } else {
+          try {
+            await pool.query(
+              `UPDATE repair_requests SET assignee_user_id = ?, status = 'assigned', updated_at = NOW() WHERE id = ?`,
+              [normalizedAssigneeUserId, insertId]
+            )
+
+            await logActivity({
+              userId: actorUserId,
+              action: "repair.assign",
+              description: `Phân công sửa chữa (khi tạo) yêu cầu ${insertId} cho ${assignee.name}`,
+              entityType: "repair",
+              entityId: insertId,
+            })
+          } catch (err) {
+            console.log(`[DEBUG] Failed to update assignee for repair ${insertId}:`, String(err && err.message))
+          }
+        }
+      } catch (err) {
+        console.log(`[DEBUG] Error loading assignee user ${normalizedAssigneeUserId}:`, String(err && err.message))
+      }
+    }
     let deviceName = "Thiết bị"
     let deviceCode = "-"
     const deviceMetaQueries = [
