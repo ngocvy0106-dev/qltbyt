@@ -701,7 +701,7 @@ router.put("/:id/assign", async (req, res) => {
 
     const existingQueryVariants = [
       {
-        query: `SELECT r.id, r.device_id, r.assignee_user_id, r.status,
+        query: `SELECT r.id, r.device_id, r.assignee_user_id, r.status, r.reporter_name,
                        COALESCE(d.device_name, r.device_name) AS device_name,
                        COALESCE(d.device_code, '') AS device_code
                 FROM repair_requests r
@@ -711,7 +711,7 @@ router.put("/:id/assign", async (req, res) => {
         params: [id],
       },
       {
-        query: `SELECT r.id, r.device_id, NULL AS assignee_user_id, r.status,
+        query: `SELECT r.id, r.device_id, NULL AS assignee_user_id, r.status, r.reporter_name,
                        COALESCE(d.device_name, r.device_name) AS device_name,
                        COALESCE(d.device_code, '') AS device_code
                 FROM repair_requests r
@@ -721,6 +721,7 @@ router.put("/:id/assign", async (req, res) => {
         params: [id],
       },
     ]
+
 
     let existingRows = []
     let lastExistingError = null
@@ -860,9 +861,38 @@ router.put("/:id/assign", async (req, res) => {
         entityId: id,
         userId: actorUserId,
       })
+      // If the request was reported by a known user, assign it to them automatically
+      let autoAssignedUserId = null
+      try {
+        const reporterName = existingRows[0].reporter_name || ""
+        if (reporterName) {
+          const reporterUser = await findUserByName(reporterName)
+          if (reporterUser && reporterUser.id) {
+            try {
+              await pool.query(
+                `UPDATE repair_requests SET assignee_user_id = ?, updated_at = NOW() WHERE id = ?`,
+                [reporterUser.id, id]
+              )
+              autoAssignedUserId = reporterUser.id
+              await logActivity({
+                userId: actorUserId,
+                action: "repair.assign",
+                description: `Tự phân công yêu cầu ${id} cho người báo: ${reporterUser.full_name}`,
+                entityType: "repair",
+                entityId: id,
+              })
+            } catch (e) {
+              // ignore update failure
+            }
+          }
+        }
+      } catch (e) {
+        // ignore lookup errors
+      }
+
       // notify interested clients that a repair was approved/assigned
       try {
-        emitRepairEvent({ id, status: "assigned", assigneeUserId: null })
+        emitRepairEvent({ id, status: "assigned", assigneeUserId: autoAssignedUserId || null })
       } catch (e) {}
     } else if (shouldMoveToInProgress) {
       await updateDeviceStatusByRepairId(existingRows[0].device_id, "repairing")
