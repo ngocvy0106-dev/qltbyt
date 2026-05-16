@@ -80,6 +80,8 @@ interface RepairItem {
   completedDate?: string | null
   completedTime?: string | null
   result: string
+  createdByUserId?: number | null
+  createdByIsAdmin?: boolean
 }
 
 interface RepairsSummary {
@@ -379,6 +381,7 @@ export function RepairPage() {
           assigneeUserId: it.assigneeUserId,
           technician: it.technician,
           createdAt: it.createdAt,
+          createdByIsAdmin: Boolean(it.createdByIsAdmin || false),
         }))
 
         const newJson = JSON.stringify({ items: stableItems, summary: summaryRes })
@@ -1515,7 +1518,11 @@ export function RepairPage() {
                       <TableCell className="text-center">{getStatusBadge(item.status)}</TableCell>
                       {showRequestActionsColumn && (
                         <TableCell className="text-center">
-                          {isDepartmentEmployee ? (
+                          {item.createdByIsAdmin ? (
+                            <span className="text-primary inline-flex items-center justify-center h-8 w-8 rounded-full">
+                              <CheckCircle className="h-4 w-4" />
+                            </span>
+                          ) : isDepartmentEmployee ? (
                             item.status === "assigned" ? (
                               <Button
                                 variant="ghost"

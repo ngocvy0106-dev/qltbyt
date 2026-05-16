@@ -85,6 +85,11 @@ function resolveActorUserId(req) {
   return Number.isInteger(candidate) && candidate > 0 ? candidate : null
 }
 
+function isAdminRoleName(value) {
+  const role = String(value || "").trim().toLowerCase()
+  return role.includes("admin") || role.includes("quản trị") || role.includes("quan tri") || role.includes("administrator")
+}
+
 async function loadUserDisplayName(userId) {
   const normalizedUserId = Number(userId || 0)
   if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
@@ -112,6 +117,44 @@ async function loadUserDisplayName(userId) {
 
     throw error
   }
+}
+
+async function findUserByName(name) {
+  const text = String(name || "").trim()
+  if (!text) return null
+
+  const candidates = [
+    `SELECT id, full_name, username, role_id FROM users WHERE TRIM(LOWER(full_name)) = TRIM(LOWER(?)) LIMIT 1`,
+    `SELECT id, full_name, username, role_id FROM users WHERE TRIM(LOWER(username)) = TRIM(LOWER(?)) LIMIT 1`,
+    `SELECT id, full_name, username, role_id FROM users WHERE LOWER(full_name) LIKE CONCAT('%', LOWER(?), '%') LIMIT 1`,
+  ]
+
+  for (const q of candidates) {
+    try {
+      const [rows] = await pool.query(q, [text])
+      if (Array.isArray(rows) && rows.length) {
+        const r = rows[0]
+        // try to read role name if possible
+        let roleName = null
+        try {
+          const [rr] = await pool.query(`SELECT role_name FROM role WHERE id = ? LIMIT 1`, [r.role_id || 0])
+          if (Array.isArray(rr) && rr.length) roleName = String(rr[0].role_name || "").trim()
+        } catch (e) {}
+
+        return {
+          id: Number(r.id || 0),
+          full_name: String(r.full_name || r.username || "").trim(),
+          username: String(r.username || "").trim(),
+          role_name: roleName,
+        }
+      }
+    } catch (e) {
+      if (e.code === "ER_NO_SUCH_TABLE" || e.code === "ER_BAD_FIELD_ERROR") continue
+      throw e
+    }
+  }
+
+  return null
 }
 
 function extractCompletedTimeFromProgressNote(progressNote) {
@@ -212,11 +255,16 @@ router.get("/", async (req, res) => {
          r.cost,
          r.completed_date,
          r.resolution_result,
-         r.updated_at
-       FROM repair_requests r
-       LEFT JOIN devices d ON r.device_id = d.id
-       LEFT JOIN users u ON r.assignee_user_id = u.id
-       ORDER BY r.id ASC`,
+        r.updated_at,
+        r.created_by_user_id,
+        c.full_name AS created_by_full_name,
+        rc.role_name AS created_by_role_name
+      FROM repair_requests r
+      LEFT JOIN devices d ON r.device_id = d.id
+      LEFT JOIN users u ON r.assignee_user_id = u.id
+      LEFT JOIN users c ON r.created_by_user_id = c.id
+      LEFT JOIN role rc ON c.role_id = rc.id
+      ORDER BY r.id ASC`,
       `SELECT
          r.id,
          r.request_code,
@@ -285,8 +333,7 @@ router.get("/", async (req, res) => {
       }
     }
 
-    const items = rows
-      .map((row) => ({
+    const mappedRows = rows.map((row) => ({
         id: row.id,
         code: row.request_code || `RP${String(row.id).padStart(3, "0")}`,
         deviceId: row.device_id,
@@ -305,6 +352,8 @@ router.get("/", async (req, res) => {
             }
           : null,
         technician: row.assignee_full_name || row.assignee_username || "-",
+        createdByUserId: row.created_by_user_id ? Number(row.created_by_user_id) : null,
+        createdByIsAdmin: isAdminRoleName(row.created_by_role_name || ""),
         createdAt: row.created_at,
         startDate: row.start_date,
         estimatedEnd: row.estimated_end_date,
@@ -320,8 +369,27 @@ router.get("/", async (req, res) => {
             ? extractCompletedTimeFromProgressNote(row.progress_note) || row.updated_at || row.completed_date
             : null,
         result: row.resolution_result || "Thành công",
-      }))
-      .filter((item) => {
+    }))
+
+    // Enrich mapped rows by resolving reporter_name -> user when created_by_user_id absent
+    const enriched = await Promise.all(
+      mappedRows.map(async (item) => {
+        if (!item.createdByUserId && !item.createdByIsAdmin && item.reporter) {
+          try {
+            const found = await findUserByName(item.reporter)
+            if (found) {
+              item.createdByIsAdmin = isAdminRoleName(found.role_name || "")
+              item.createdByUserId = Number(found.id || 0) || null
+            }
+          } catch (e) {
+            // ignore enrichment errors
+          }
+        }
+        return item
+      })
+    )
+
+    const items = enriched.filter((item) => {
         // Only employees are scoped to their own assigned repairs or repairs they reported.
         // Admins should see all repairs even if a `userId` header/query is present.
         if (isEmployee) {
@@ -427,6 +495,15 @@ router.post("/", async (req, res) => {
 
     const queryVariants = [
       `INSERT INTO repair_requests
+       (request_code, device_id, issue_description, reporter_name, department_name, priority, status, created_by_user_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())`,
+      `INSERT INTO repair_requests
+       (request_code, device_id, issue_description, reporter_name, department_name, priority, status, created_by_user_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, NOW())`,
+      `INSERT INTO repair_requests
+       (request_code, device_id, issue_description, reporter_name, priority, status, created_by_user_id, created_at)
+       VALUES (?, ?, ?, ?, ?, 'pending', ?, NOW())`,
+      `INSERT INTO repair_requests
        (request_code, device_id, issue_description, reporter_name, department_name, priority, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
       `INSERT INTO repair_requests
@@ -438,6 +515,32 @@ router.post("/", async (req, res) => {
     ]
 
     const queryParams = [
+      [
+        requestCode,
+        normalizedDeviceId,
+        normalizedIssue,
+        normalizedReporter,
+        normalizedDepartment,
+        normalizedPriority,
+        actorUserId || null,
+      ],
+      [
+        requestCode,
+        normalizedDeviceId,
+        normalizedIssue,
+        normalizedReporter,
+        normalizedDepartment,
+        normalizedPriority,
+        actorUserId || null,
+      ],
+      [
+        requestCode,
+        normalizedDeviceId,
+        normalizedIssue,
+        normalizedReporter,
+        normalizedPriority,
+        actorUserId || null,
+      ],
       [
         requestCode,
         normalizedDeviceId,
