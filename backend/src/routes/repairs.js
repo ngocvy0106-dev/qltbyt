@@ -846,22 +846,6 @@ router.put("/:id/assign", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu sửa chữa" })
     }
 
-    // Ensure technician_name column mirrors the assigned user's display name
-    try {
-      if (assigneeUserId) {
-        const techName = assigneeUser?.name || null
-        if (techName) {
-          try {
-            await pool.query(`UPDATE repair_requests SET technician_name = ?, updated_at = NOW() WHERE id = ?`, [techName, id])
-          } catch (e) {
-            // ignore write failures to avoid breaking the main flow
-          }
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-
     if (isApprovalOnly) {
       await updateDeviceStatusByRepairId(existingRows[0].device_id, "repairing")
       
@@ -904,20 +888,6 @@ router.put("/:id/assign", async (req, res) => {
         }
       } catch (e) {
         // ignore lookup errors
-      }
-
-      // If we auto-assigned, also set technician_name for clarity in UI
-      if (autoAssignedUserId) {
-        try {
-          const assigneeInfo = await loadUserDisplayName(autoAssignedUserId)
-          if (assigneeInfo && assigneeInfo.name) {
-            try {
-              await pool.query(`UPDATE repair_requests SET technician_name = ?, updated_at = NOW() WHERE id = ?`, [assigneeInfo.name, id])
-            } catch (e) {}
-          }
-        } catch (e) {
-          // ignore
-        }
       }
 
       // notify interested clients that a repair was approved/assigned
