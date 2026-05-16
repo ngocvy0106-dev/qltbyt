@@ -584,6 +584,10 @@ export function RepairPage() {
   }, [loggedInUser.fullName, loggedInUser.username])
 
   useEffect(() => {
+    if (!mounted) {
+      return
+    }
+
     loadRepairData()
   }, [apiBaseUrl, search, loggedInUser.role, loggedInUser.fullName, loggedInUser.username, loggedInUser.id])
 
@@ -628,6 +632,10 @@ export function RepairPage() {
   }, [searchParams])
 
   useEffect(() => {
+    if (!mounted) {
+      return
+    }
+
     loadDialogOptions()
   }, [apiBaseUrl, loggedInUser.role, loggedInUser.departmentName])
 
