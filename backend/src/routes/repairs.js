@@ -633,6 +633,10 @@ router.post("/", async (req, res) => {
               entityType: "repair",
               entityId: insertId,
             })
+
+            try {
+              emitRepairEvent({ id: insertId, status: "assigned", assigneeUserId: normalizedAssigneeUserId })
+            } catch (eventError) {}
           } catch (err) {
             console.log(`[DEBUG] Failed to update assignee for repair ${insertId}:`, String(err && err.message))
           }

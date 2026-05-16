@@ -763,6 +763,7 @@ export function RepairPage() {
           reporterName: normalizedReporter,
           departmentName,
           priority: priorityValue,
+          assigneeUserId: isAdminRole ? assigneeUserId : undefined,
         }),
       })
 
@@ -780,24 +781,6 @@ export function RepairPage() {
       const requestCode = String(responseData?.requestCode || `RP${Date.now().toString().slice(-6)}`)
       const nowIso = new Date().toISOString()
       const shouldAssignTechnician = Boolean(isAdminRole && assigneeUserId > 0 && responseData?.id)
-
-      if (shouldAssignTechnician) {
-        const assignResponse = await fetchWithDebug(`${apiBaseUrl}/api/repairs/${responseData?.id}/assign`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            actorUserId: Number(loggedInUser.id || 0) || undefined,
-            assigneeUserId,
-          }),
-        })
-
-        if (!assignResponse.ok) {
-          const assignData = (await assignResponse.json().catch(() => null)) as { message?: string } | null
-          alert(assignData?.message || "Phân công nhân viên xử lý thất bại")
-        }
-      }
 
       setItems((prev) => [
         {
