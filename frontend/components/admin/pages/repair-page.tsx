@@ -1631,7 +1631,9 @@ export function RepairPage() {
                     <TableHead className="text-center text-muted-foreground">Mã</TableHead>
                     <TableHead className="text-center text-muted-foreground">Thiết bị</TableHead>
                     <TableHead className="text-center text-muted-foreground">Sự cố</TableHead>
-                    <TableHead className="text-center text-muted-foreground">Nhân viên xử lý</TableHead>
+                    {!isDepartmentEmployee && (
+                      <TableHead className="text-center text-muted-foreground">Nhân viên xử lý</TableHead>
+                    )}
                     <TableHead className="text-center text-muted-foreground">Hoàn thành</TableHead>
                     <TableHead className="text-center text-muted-foreground">Thời gian</TableHead>
                     <TableHead className="text-center text-muted-foreground">Kết quả</TableHead>
@@ -1640,12 +1642,12 @@ export function RepairPage() {
                 <TableBody>
                   {isLoading && (
                     <TableRow className="border-border">
-                      <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">Đang tải dữ liệu sửa chữa...</TableCell>
+                      <TableCell colSpan={isDepartmentEmployee ? 6 : 7} className="py-8 text-center text-muted-foreground">Đang tải dữ liệu sửa chữa...</TableCell>
                     </TableRow>
                   )}
                   {!isLoading && historyItems.length === 0 && (
                     <TableRow className="border-border">
-                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Chưa có lịch sử sửa chữa</TableCell>
+                      <TableCell colSpan={isDepartmentEmployee ? 6 : 7} className="py-8 text-center text-muted-foreground">Chưa có lịch sử sửa chữa</TableCell>
                     </TableRow>
                   )}
                   {!isLoading && historyItems.map((item) => (
@@ -1653,7 +1655,9 @@ export function RepairPage() {
                       <TableCell className="text-center"><Badge variant="outline" className="font-mono">{item.code}</Badge></TableCell>
                       <TableCell className="text-center font-medium">{item.device}</TableCell>
                       <TableCell className="text-center">{item.issue}</TableCell>
-                      <TableCell className="text-center">{item.technician}</TableCell>
+                      {!isDepartmentEmployee && (
+                        <TableCell className="text-center">{item.technician}</TableCell>
+                      )}
                       <TableCell className="text-center">{formatDate(item.completedDate)}</TableCell>
                       <TableCell className="text-center">{formatDateTime(item.completedTime || item.completedDate)}</TableCell>
                       <TableCell className="text-center">
