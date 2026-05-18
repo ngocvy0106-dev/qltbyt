@@ -1706,6 +1706,91 @@ router.get("/maintenance-alerts", async (req, res) => {
       }
     }
 
+    // Handle employee repair confirmation notifications ONLY for admin users
+    if (isAdmin && !isEmployee) {
+      try {
+        const repairConfirmQueryVariants = Number.isInteger(userId) && userId > 0
+          ? [
+              {
+                query: `SELECT
+                          a.id,
+                          a.description,
+                          a.entity_id,
+                          a.created_at
+                        FROM activity a
+                        WHERE a.action = 'repair.employee_confirmed'
+                          AND (a.user_id = ? OR a.user_id IS NULL)
+                        ORDER BY a.created_at DESC
+                        LIMIT 20`,
+                params: [userId],
+              },
+              {
+                query: `SELECT
+                          a.id,
+                          a.description,
+                          a.entity_id,
+                          a.created_at
+                        FROM activity a
+                        WHERE a.action = 'repair.employee_confirmed'
+                        ORDER BY a.created_at DESC
+                        LIMIT 20`,
+                params: [],
+              },
+            ]
+          : [
+              {
+                query: `SELECT
+                          a.id,
+                          a.description,
+                          a.entity_id,
+                          a.created_at
+                        FROM activity a
+                        WHERE a.action = 'repair.employee_confirmed'
+                        ORDER BY a.created_at DESC
+                        LIMIT 20`,
+                params: [],
+              },
+            ]
+
+        let repairConfirmRows = []
+        let lastRepairConfirmError = null
+
+        for (const variant of repairConfirmQueryVariants) {
+          try {
+            const [rows] = await pool.query(variant.query, variant.params)
+            repairConfirmRows = rows
+            lastRepairConfirmError = null
+            break
+          } catch (repairConfirmError) {
+            if (repairConfirmError.code === "ER_BAD_FIELD_ERROR") {
+              lastRepairConfirmError = repairConfirmError
+              continue
+            }
+
+            throw repairConfirmError
+          }
+        }
+
+        if (lastRepairConfirmError) {
+          throw lastRepairConfirmError
+        }
+
+        repairConfirmRows.forEach((row) => {
+          notifications.push({
+            id: `repair-confirm-${row.id}`,
+            title: "Nhân viên xác nhận sửa chữa",
+            description: row.description || "Nhân viên vừa xác nhận sửa chữa",
+            time: row.created_at || null,
+            type: "repair",
+          })
+        })
+      } catch (repairConfirmError) {
+        if (repairConfirmError.code !== "ER_NO_SUCH_TABLE" && repairConfirmError.code !== "ER_BAD_FIELD_ERROR") {
+          throw repairConfirmError
+        }
+      }
+    }
+
     // Handle allocation notifications for employees
     if (isEmployee && Number.isInteger(userId) && userId > 0) {
       try {
