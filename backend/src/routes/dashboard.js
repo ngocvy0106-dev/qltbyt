@@ -445,8 +445,33 @@ async function getRecentActivitiesFromDb() {
         }
 
         if (action.startsWith("repair.")) {
-          // For repair actions, format as: Admin [User Name] - Duyệt yêu cầu sửa chữa thiết bị Tên thiết bị [Serial] - HH:MM DD/MM/YYYY
+          // For repair actions, format with role/name and timestamp
           const shortTime = item.created_at ? formatShortDateTime(item.created_at) : ""
+
+          if (action === "repair.assign") {
+            let deviceLabel = "Thiết bị"
+            let assigneeName = "-"
+            const assignRegexes = [
+              /sửa chữa thiết bị\s+(.+?)\s+cho\s+(.+)$/i,
+              /sua chua thiet bi\s+(.+?)\s+cho\s+(.+)$/i,
+            ]
+
+            for (const regex of assignRegexes) {
+              const match = String(entityName || "").match(regex)
+              if (match?.[1]) {
+                deviceLabel = String(match[1] || "").trim() || deviceLabel
+                assigneeName = String(match[2] || "").trim() || assigneeName
+                break
+              }
+            }
+
+            const formatted = `${roleName} [${fullName}] - Tạo lịch sửa chữa thiết bị ${deviceLabel} - Nhân viên xử lý: ${assigneeName}`
+            return {
+              title: titleLabel,
+              desc: shortTime ? `${formatted} - ${shortTime}` : formatted,
+            }
+          }
+
           return {
             title: titleLabel,
             desc: shortTime
