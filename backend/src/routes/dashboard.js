@@ -236,6 +236,87 @@ async function loadTransferMetaByIds(transferIds) {
   return metaMap
 }
 
+async function loadRepairMetaByIds(repairIds) {
+  const ids = Array.from(new Set(repairIds)).filter((id) => Number.isInteger(id) && id > 0)
+  if (!ids.length) {
+    return new Map()
+  }
+
+  const placeholders = ids.map(() => "?").join(", ")
+  const queryVariants = [
+    `SELECT r.id,
+            r.request_code,
+            COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
+            COALESCE(d.device_code, '') AS device_code,
+            COALESCE(u.full_name, u.username, '') AS assignee_name
+     FROM repair_requests r
+     LEFT JOIN devices d ON r.device_id = d.id
+     LEFT JOIN users u ON r.assignee_user_id = u.id
+     WHERE r.id IN (${placeholders})`,
+    `SELECT r.id,
+            r.request_code,
+            COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
+            '' AS device_code,
+            COALESCE(u.full_name, u.username, '') AS assignee_name
+     FROM repair_requests r
+     LEFT JOIN devices d ON r.device_id = d.id
+     LEFT JOIN users u ON r.assignee_user_id = u.id
+     WHERE r.id IN (${placeholders})`,
+    `SELECT r.id,
+            r.request_code,
+            COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
+            '' AS device_code,
+            '' AS assignee_name
+     FROM repair_requests r
+     LEFT JOIN devices d ON r.device_id = d.id
+     WHERE r.id IN (${placeholders})`,
+  ]
+
+  let rows = []
+  let lastError = null
+
+  for (const query of queryVariants) {
+    try {
+      const [result] = await pool.query(query, ids)
+      rows = result
+      lastError = null
+      break
+    } catch (error) {
+      if (error.code === "ER_BAD_FIELD_ERROR") {
+        lastError = error
+        continue
+      }
+
+      if (error.code === "ER_NO_SUCH_TABLE") {
+        return new Map()
+      }
+
+      throw error
+    }
+  }
+
+  if (lastError) {
+    return new Map()
+  }
+
+  const metaMap = new Map()
+  rows.forEach((row) => {
+    const id = Number(row.id || 0)
+    if (!Number.isInteger(id) || id <= 0) {
+      return
+    }
+
+    metaMap.set(id, {
+      requestCode: String(row.request_code || "").trim() || `RP-${id}`,
+      deviceName: String(row.device_name || "").trim() || "Thiết bị",
+      deviceCode: String(row.device_code || "").trim() || "",
+      assigneeName: String(row.assignee_name || "").trim() || "-",
+    })
+  })
+
+  return metaMap
+}
+
 function formatTimeWithDate(value) {
   if (!value) {
     return "-"
@@ -309,6 +390,12 @@ async function getRecentActivitiesFromDb() {
         .map((item) => Number(item.entity_id || 0))
         .filter((id) => Number.isInteger(id) && id > 0)
       const transferMetaMap = await loadTransferMetaByIds(transferIds)
+
+        const repairAssignIds = rows
+          .filter((item) => String(item.action_name || "").trim() === "repair.assign")
+          .map((item) => Number(item.entity_id || 0))
+          .filter((id) => Number.isInteger(id) && id > 0)
+        const repairMetaMap = await loadRepairMetaByIds(repairAssignIds)
 
       const seenTransferIds = new Set()
 
@@ -451,21 +538,30 @@ async function getRecentActivitiesFromDb() {
           if (action === "repair.assign") {
             let deviceLabel = "Thiết bị"
             let assigneeName = "-"
-            const assignRegexes = [
-              /sửa chữa thiết bị\s+(.+?)\s+cho\s+(.+)$/i,
-              /sua chua thiet bi\s+(.+?)\s+cho\s+(.+)$/i,
-            ]
+            let deviceSerial = ""
+            const repairId = Number(item.entity_id || 0)
+            const repairMeta = Number.isInteger(repairId) && repairId > 0 ? repairMetaMap.get(repairId) : null
+            if (repairMeta) {
+              deviceLabel = repairMeta.deviceName || deviceLabel
+              deviceSerial = repairMeta.deviceCode || ""
+              assigneeName = repairMeta.assigneeName || assigneeName
+            } else {
+              const assignRegexes = [
+                /sửa chữa thiết bị\s+(.+?)\s+cho\s+(.+)$/i,
+                /sua chua thiet bi\s+(.+?)\s+cho\s+(.+)$/i,
+              ]
 
-            for (const regex of assignRegexes) {
-              const match = String(entityName || "").match(regex)
-              if (match?.[1]) {
-                deviceLabel = String(match[1] || "").trim() || deviceLabel
-                assigneeName = String(match[2] || "").trim() || assigneeName
-                break
+              for (const regex of assignRegexes) {
+                const match = String(entityName || "").match(regex)
+                if (match?.[1]) {
+                  deviceLabel = String(match[1] || "").trim() || deviceLabel
+                  assigneeName = String(match[2] || "").trim() || assigneeName
+                  break
+                }
               }
             }
-
-            const formatted = `${roleName} [${fullName}] - Tạo lịch sửa chữa thiết bị ${deviceLabel} - Nhân viên xử lý: ${assigneeName}`
+            const serialLabel = deviceSerial ? ` [${deviceSerial}]` : ""
+            const formatted = `${roleName} [${fullName}] - Tạo lịch sửa chữa thiết bị ${deviceLabel}${serialLabel} - Nhân viên xử lý: ${assigneeName}`
             return {
               title: titleLabel,
               desc: shortTime ? `${formatted} - ${shortTime}` : formatted,
