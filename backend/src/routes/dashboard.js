@@ -271,6 +271,7 @@ function extractImportBatchDetail(description, roleName, fullName) {
 async function getRecentActivitiesFromDb() {
   const excludedActions = new Set([
     "repair.request",
+    "repair.employee_confirmed",
     "maintenance.confirm",
     "maintenance.employee_confirmed",
   ])
@@ -282,7 +283,7 @@ async function getRecentActivitiesFromDb() {
      FROM activity a
      LEFT JOIN users u ON a.user_id = u.id
      LEFT JOIN role r ON u.role_id = r.id
-    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.create', 'repair.request', 'maintenance.confirm', 'maintenance.employee_confirmed')
+    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.create', 'repair.request', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
       AND (r.role_name = 'Admin' OR r.role_name IS NULL)
       AND a.created_at >= DATE_SUB(NOW(), INTERVAL 3 DAY)
      ORDER BY a.id DESC`,
@@ -292,7 +293,7 @@ async function getRecentActivitiesFromDb() {
      FROM activity a
      LEFT JOIN users u ON a.user_id = u.id
      LEFT JOIN role r ON u.role_id = r.id
-    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.create', 'repair.request', 'maintenance.confirm', 'maintenance.employee_confirmed')
+    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.create', 'repair.request', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
       AND (r.role_name = 'Admin' OR r.role_name IS NULL)
       AND a.created_at >= DATE_SUB(NOW(), INTERVAL 3 DAY)
      ORDER BY a.id DESC`,
