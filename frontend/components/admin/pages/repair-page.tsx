@@ -1252,6 +1252,31 @@ export function RepairPage() {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label>Khoa/Phòng</Label>
+                  {isDepartmentEmployee ? (
+                    <Input
+                      className="bg-secondary border-border"
+                      value={mounted ? displayDepartmentName : ""}
+                      disabled
+                      readOnly
+                    />
+                  ) : (
+                    <Select
+                      value={selectedDepartmentId || undefined}
+                      onValueChange={setSelectedDepartmentId}
+                    >
+                      <SelectTrigger className="bg-secondary border-border">
+                        <SelectValue placeholder="Chọn khoa/phòng" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departmentOptions.map((item) => (
+                          <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <div className="space-y-2">
                   <Label>Thiết bị</Label>
                   {shouldShowDepartmentLists ? (
                     <div className="space-y-2 rounded-lg border border-border bg-secondary/40 p-3 max-h-40 overflow-auto">
@@ -1280,6 +1305,9 @@ export function RepairPage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Độ ưu tiên</Label>
                   <Select value={selectedPriority || undefined} onValueChange={setSelectedPriority}>
@@ -1294,7 +1322,38 @@ export function RepairPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  {isAdminRole ? (
+                    <>
+                      <Label>Nhân viên xử lý</Label>
+                      {shouldShowDepartmentLists ? (
+                        <div className="space-y-2 rounded-lg border border-border bg-secondary/40 p-3 max-h-40 overflow-auto">
+                          {filteredTechnicianOptions.length === 0 ? (
+                            <div className="text-sm text-muted-foreground">Không có nhân viên trong khoa đã chọn</div>
+                          ) : filteredTechnicianOptions.map((item) => (
+                            <label key={item.id} className="flex items-center gap-2 text-sm">
+                              <Checkbox
+                                checked={selectedTechnicianId === String(item.id)}
+                                onCheckedChange={(checked) =>
+                                  setSelectedTechnicianId(checked ? String(item.id) : "")
+                                }
+                              />
+                              <span className="truncate" title={item.name}>{item.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-border bg-secondary/40 p-3 text-sm text-muted-foreground">
+                          Chọn khoa/phòng để xem nhân viên
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div />
+                  )}
+                </div>
               </div>
+
               <div className="space-y-2">
                 <Label>Mô tả sự cố</Label>
                 <Textarea
@@ -1305,69 +1364,18 @@ export function RepairPage() {
                   onChange={(event) => setIssueDescription(event.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Người báo cáo</Label>
-                  <Input
-                    placeholder="Họ tên"
-                    className="bg-secondary border-border"
-                    value={mounted ? reporterName : ""}
-                    disabled
-                    readOnly
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Khoa/Phòng</Label>
-                  {isDepartmentEmployee ? (
-                    <Input
-                      className="bg-secondary border-border"
-                      value={mounted ? displayDepartmentName : ""}
-                      disabled
-                      readOnly
-                    />
-                  ) : (
-                    <Select
-                      value={selectedDepartmentId || undefined}
-                      onValueChange={setSelectedDepartmentId}
-                    >
-                      <SelectTrigger className="bg-secondary border-border">
-                        <SelectValue placeholder="Chọn khoa/phòng" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departmentOptions.map((item) => (
-                          <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+
+              <div className="space-y-2">
+                <Label>Người báo cáo</Label>
+                <Input
+                  placeholder="Họ tên"
+                  className="bg-secondary border-border"
+                  value={mounted ? reporterName : ""}
+                  disabled
+                  readOnly
+                />
               </div>
-              {isAdminRole && (
-                <div className="space-y-2">
-                  <Label>Nhân viên xử lý</Label>
-                  {shouldShowDepartmentLists ? (
-                    <div className="space-y-2 rounded-lg border border-border bg-secondary/40 p-3 max-h-40 overflow-auto">
-                      {filteredTechnicianOptions.length === 0 ? (
-                        <div className="text-sm text-muted-foreground">Không có nhân viên trong khoa đã chọn</div>
-                      ) : filteredTechnicianOptions.map((item) => (
-                        <label key={item.id} className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={selectedTechnicianId === String(item.id)}
-                            onCheckedChange={(checked) =>
-                              setSelectedTechnicianId(checked ? String(item.id) : "")
-                            }
-                          />
-                          <span className="truncate" title={item.name}>{item.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-border bg-secondary/40 p-3 text-sm text-muted-foreground">
-                      Chọn khoa/phòng để xem nhân viên
-                    </div>
-                  )}
-                </div>
-              )}
+
               <Button
                 className="w-full bg-primary text-primary-foreground"
                 onClick={handleSubmitRepairRequest}
