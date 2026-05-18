@@ -1252,7 +1252,7 @@ export function RepairPage() {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Khoa/Phòng</Label>
+                  <Label>Khoa</Label>
                   {isDepartmentEmployee ? (
                     <Input
                       className="bg-secondary border-border"
