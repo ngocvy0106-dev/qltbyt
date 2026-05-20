@@ -633,6 +633,7 @@ router.post("/:id/reset-password", async (req, res) => {
     }
 
     const newPassword = String(req.body?.newPassword || "123456").trim() || "123456"
+    const skipActivityLog = Boolean(req.body?.skipActivityLog)
 
     const [[user]] = await pool.query("SELECT username FROM users WHERE id = ?", [id])
 
@@ -648,13 +649,15 @@ router.post("/:id/reset-password", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" })
     }
 
-    await logActivity({
-      userId: actorUserId,
-      action: "user.reset_password",
-      description: `Tài khoản ${String(user?.username || "-").trim() || "-"}`,
-      entityType: "user",
-      entityId: id,
-    })
+    if (!skipActivityLog) {
+      await logActivity({
+        userId: actorUserId,
+        action: "user.reset_password",
+        description: `Tài khoản ${String(user?.username || "-").trim() || "-"}`,
+        entityType: "user",
+        entityId: id,
+      })
+    }
 
     return res.json({ ok: true })
   } catch (error) {

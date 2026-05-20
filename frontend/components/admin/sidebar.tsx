@@ -656,6 +656,7 @@ export function Sidebar() {
           body: JSON.stringify({
             newPassword: passwordForm.newPassword.trim(),
             actorUserId: loggedInUser.id || null,
+            skipActivityLog: true,
           }),
         })
 
