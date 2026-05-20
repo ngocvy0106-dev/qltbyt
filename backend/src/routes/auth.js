@@ -636,6 +636,43 @@ router.post("/sessions/logout", async (req, res) => {
   }
 })
 
+router.post("/sessions/clear", async (req, res) => {
+  try {
+    const userId = Number(req.body?.userId || req.headers["x-user-id"] || 0)
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({ message: "Chua dang nhap" })
+    }
+
+    let deletedCount = 0
+    try {
+      const [result] = await pool.query(
+        "DELETE FROM user_login_sessions WHERE user_id = ?",
+        [userId]
+      )
+      deletedCount = result?.affectedRows || 0
+    } catch (error) {
+      if (error.code === "ER_NO_SUCH_TABLE") {
+        return res.json({ ok: true, deleted: 0 })
+      }
+
+      throw error
+    }
+
+    await logActivity({
+      userId,
+      action: "user.logout_all_sessions",
+      description: `Dang xoa toan bo session (${deletedCount})`,
+      entityType: "user",
+      entityId: userId,
+    })
+
+    return res.json({ ok: true, deleted: deletedCount })
+  } catch (error) {
+    return res.status(500).json({ message: "Loi server", detail: String(error.message || error) })
+  }
+})
+
 router.post("/logout", async (req, res) => {
   try {
     const userId = Number(req.body?.userId || 0)
