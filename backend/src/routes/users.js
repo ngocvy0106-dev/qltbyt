@@ -547,7 +547,7 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" })
     }
 
-    const { name, username, roleId, departmentName } = req.body || {}
+    const { name, username, roleId, departmentName, skipActivityLog } = req.body || {}
 
     const normalizedDepartmentName = String(departmentName || "").trim() || null
 
@@ -607,7 +607,7 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" })
     }
 
-    if (!actorUserId || actorUserId !== id) {
+    if (!skipActivityLog && (!actorUserId || actorUserId !== id)) {
       await logActivity({
         userId: actorUserId,
         action: "user.update",

@@ -637,6 +637,7 @@ export function Sidebar() {
           roleId: profileRoleId,
           departmentName: profileDepartment || null,
           actorUserId: loggedInUser.id || null,
+          skipActivityLog: true,
         }),
       })
 
