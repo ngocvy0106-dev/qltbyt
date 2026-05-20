@@ -291,6 +291,26 @@ async function recordLoginSession({ userId, req, deviceName, browser }) {
   }
 
   try {
+    const [existingRows] = await pool.query(
+      `SELECT id
+       FROM user_login_sessions
+       WHERE user_id = ? AND device_name = ? AND browser = ?
+       ORDER BY last_active_at DESC
+       LIMIT 1`,
+      [userId, resolvedDeviceName, resolvedBrowser]
+    )
+
+    if (existingRows.length) {
+      const sessionId = existingRows[0].id
+      await pool.query(
+        `UPDATE user_login_sessions
+         SET location = ?, ip_address = ?, last_active_at = NOW(), login_at = NOW(), is_current = 1
+         WHERE id = ? AND user_id = ?`,
+        [location, ipAddress, sessionId, userId]
+      )
+      return
+    }
+
     await pool.query(
       `INSERT INTO user_login_sessions
        (user_id, device_name, browser, location, ip_address, login_at, last_active_at, is_current)
