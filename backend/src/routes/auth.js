@@ -305,6 +305,78 @@ async function recordLoginSession({ userId, req, deviceName, browser }) {
   }
 }
 
+async function fetchLoginSessions(userId) {
+  const queries = [
+    {
+      sql: `SELECT id, device_name, browser, location, last_active_at, login_at, is_current
+            FROM user_login_sessions
+            WHERE user_id = ?
+            ORDER BY last_active_at DESC
+            LIMIT 12`,
+      sessionKey: "id",
+    },
+    {
+      sql: `SELECT session_id, device_name, browser, location, last_active_at, login_at, is_current
+            FROM user_login_sessions
+            WHERE user_id = ?
+            ORDER BY last_active_at DESC
+            LIMIT 12`,
+      sessionKey: "session_id",
+    },
+    {
+      sql: `SELECT device_name, browser, location, last_active_at, login_at, is_current
+            FROM user_login_sessions
+            WHERE user_id = ?
+            ORDER BY last_active_at DESC
+            LIMIT 12`,
+      sessionKey: null,
+    },
+  ]
+
+  let lastError = null
+
+  for (const query of queries) {
+    try {
+      const [rows] = await pool.query(query.sql, [userId])
+      return rows.map((row) => {
+        const lastActive = row.last_active_at || row.login_at || null
+        let lastActiveIso = null
+        if (lastActive) {
+          const parsed = new Date(lastActive)
+          if (!Number.isNaN(parsed.getTime())) {
+            lastActiveIso = parsed.toISOString()
+          }
+        }
+
+        const sessionRaw = query.sessionKey ? row[query.sessionKey] : null
+        const sessionId = Number.isInteger(Number(sessionRaw)) ? Number(sessionRaw) : null
+
+        return {
+          sessionId,
+          deviceName: row.device_name || "Unknown Device",
+          browser: row.browser || "Unknown",
+          location: row.location || null,
+          lastActive: lastActiveIso,
+          isCurrent: Boolean(row.is_current),
+        }
+      })
+    } catch (error) {
+      if (error.code === "ER_BAD_FIELD_ERROR") {
+        lastError = error
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  if (lastError) {
+    throw lastError
+  }
+
+  return []
+}
+
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body
@@ -468,34 +540,7 @@ router.get("/sessions", async (req, res) => {
       return res.json({ sessions: [] })
     }
 
-    const [rows] = await pool.query(
-      `SELECT device_name, browser, location, last_active_at, login_at, is_current
-       FROM user_login_sessions
-       WHERE user_id = ?
-       ORDER BY last_active_at DESC
-       LIMIT 12`,
-      [userId]
-    )
-
-    const sessions = rows.map((row) => {
-      const lastActive = row.last_active_at || row.login_at || null
-      let lastActiveIso = null
-      if (lastActive) {
-        const parsed = new Date(lastActive)
-        if (!Number.isNaN(parsed.getTime())) {
-          lastActiveIso = parsed.toISOString()
-        }
-      }
-
-      return {
-        deviceName: row.device_name || "Unknown Device",
-        browser: row.browser || "Unknown",
-        location: row.location || null,
-        lastActive: lastActiveIso,
-        isCurrent: Boolean(row.is_current),
-      }
-    })
-
+    const sessions = await fetchLoginSessions(userId)
     return res.json({ sessions })
   } catch (error) {
     if (error.code === "ER_NO_SUCH_TABLE") {
@@ -503,6 +548,71 @@ router.get("/sessions", async (req, res) => {
     }
 
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
+router.post("/sessions/logout", async (req, res) => {
+  try {
+    const userId = Number(req.body?.userId || req.headers["x-user-id"] || 0)
+    const sessionId = Number(req.body?.sessionId || req.body?.id || 0)
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({ message: "Chua dang nhap" })
+    }
+
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      return res.status(400).json({ message: "Thieu sessionId" })
+    }
+
+    const deleteQueries = [
+      {
+        sql: "DELETE FROM user_login_sessions WHERE user_id = ? AND id = ?",
+        params: [userId, sessionId],
+      },
+      {
+        sql: "DELETE FROM user_login_sessions WHERE user_id = ? AND session_id = ?",
+        params: [userId, sessionId],
+      },
+    ]
+
+    let lastError = null
+    let deletedCount = 0
+
+    for (const query of deleteQueries) {
+      try {
+        const [result] = await pool.query(query.sql, query.params)
+        deletedCount = result?.affectedRows || 0
+        lastError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastError = error
+          continue
+        }
+
+        throw error
+      }
+    }
+
+    if (lastError) {
+      throw lastError
+    }
+
+    if (!deletedCount) {
+      return res.status(404).json({ message: "Khong tim thay phien dang nhap" })
+    }
+
+    await logActivity({
+      userId,
+      action: "user.logout_session",
+      description: `Dang xuat session ${sessionId}`,
+      entityType: "user",
+      entityId: userId,
+    })
+
+    return res.json({ ok: true })
+  } catch (error) {
+    return res.status(500).json({ message: "Loi server", detail: String(error.message || error) })
   }
 })
 
