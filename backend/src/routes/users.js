@@ -47,7 +47,108 @@ function normalizeUserRow(row) {
 
 function resolveActorUserId(req) {
   const candidate = Number(req?.body?.actorUserId || req?.query?.actorUserId || 0)
-  return Number.isInteger(candidate) && candidate > 0 ? candidate : null
+  if (Number.isInteger(candidate) && candidate > 0) {
+    return candidate
+  }
+
+  const headerCandidate = Number(req?.headers?.["x-user-id"] || req?.headers?.["x-userid"] || 0)
+  if (Number.isInteger(headerCandidate) && headerCandidate > 0) {
+    return headerCandidate
+  }
+
+  return null
+}
+
+function resolveActorRoleName(req) {
+  return String(req?.body?.actorRole || req?.query?.actorRole || req?.headers?.["x-user-role"] || "").trim()
+}
+
+async function findUserWithRoleById(userId) {
+  const queries = [
+    `SELECT
+       u.id,
+       u.username,
+       u.full_name,
+       u.password_hash,
+       u.password,
+       COALESCE(r.role_name, 'User') AS role
+     FROM users u
+     LEFT JOIN role r ON u.role_id = r.id
+     WHERE u.id = ?
+     LIMIT 1`,
+    `SELECT
+       u.id,
+       u.username,
+       u.full_name,
+       u.password_hash,
+       u.password,
+       'User' AS role
+     FROM users u
+     WHERE u.id = ?
+     LIMIT 1`,
+    `SELECT
+       u.id,
+       u.username,
+       u.full_name,
+       u.password_hash,
+       u.password,
+       COALESCE(r.role_name, 'User') AS role
+     FROM users u
+     LEFT JOIN role r ON u.role_id = r.id
+     WHERE u.id = ?
+     LIMIT 1`,
+  ]
+
+  let lastError = null
+
+  for (const query of queries) {
+    try {
+      const [rows] = await pool.query(query, [userId])
+      return rows[0] || null
+    } catch (error) {
+      if (error.code === 'ER_BAD_FIELD_ERROR') {
+        lastError = error
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  if (lastError) {
+    throw lastError
+  }
+
+  return null
+}
+
+async function updatePasswordForUser({ userId, newPassword }) {
+  const queries = [
+    'UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?',
+    'UPDATE users SET password_hash = ? WHERE id = ?',
+    'UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?',
+    'UPDATE users SET password = ? WHERE id = ?',
+  ]
+
+  let lastError = null
+
+  for (const query of queries) {
+    try {
+      await pool.query(query, [newPassword, userId])
+      return
+    } catch (error) {
+      if (error.code === 'ER_BAD_FIELD_ERROR') {
+        lastError = error
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  if (lastError) {
+    throw lastError
+  }
 }
 
 async function queryUsersWithRole() {
@@ -627,6 +728,7 @@ router.post("/:id/reset-password", async (req, res) => {
   try {
     const id = Number(req.params.id)
     const actorUserId = resolveActorUserId(req)
+    const actorRoleName = resolveActorRoleName(req)
 
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" })
@@ -635,7 +737,20 @@ router.post("/:id/reset-password", async (req, res) => {
     const newPassword = String(req.body?.newPassword || "123456").trim() || "123456"
     const skipActivityLog = Boolean(req.body?.skipActivityLog)
 
-    const [[user]] = await pool.query("SELECT username FROM users WHERE id = ?", [id])
+    const actor = actorUserId ? await findUserWithRoleById(actorUserId) : null
+    const target = await findUserWithRoleById(id)
+
+    if (!actor || !isAdminRoleName(actorRoleName || actor.role)) {
+      return res.status(403).json({ message: "Bạn không có quyền đặt lại mật khẩu" })
+    }
+
+    if (!target) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" })
+    }
+
+    if (isAdminRoleName(target.role)) {
+      return res.status(403).json({ message: "Không thể đặt lại mật khẩu cho tài khoản quản trị" })
+    }
 
     const [result] = await pool.query(
       `UPDATE users
@@ -653,7 +768,7 @@ router.post("/:id/reset-password", async (req, res) => {
       await logActivity({
         userId: actorUserId,
         action: "user.reset_password",
-        description: `Tài khoản ${String(user?.username || "-").trim() || "-"}`,
+        description: `Tài khoản ${String(target.username || "-").trim() || "-"}`,
         entityType: "user",
         entityId: id,
       })
@@ -741,6 +856,54 @@ router.delete("/:id", async (req, res) => {
     return res.json({ ok: true })
   } catch (error) {
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const actorUserId = resolveActorUserId(req)
+    const targetUserId = Number(req.body?.targetUserId || req.body?.userId || req.body?.id || 0)
+    const newPassword = String(req.body?.newPassword || '').trim()
+
+    if (!actorUserId) {
+      return res.status(403).json({ message: 'Thiếu người thực hiện hợp lệ' })
+    }
+
+    if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+      return res.status(400).json({ message: 'Thiếu tài khoản cần đặt lại mật khẩu' })
+    }
+
+    if (newPassword.length < 4) {
+      return res.status(400).json({ message: 'Mật khẩu mới quá ngắn' })
+    }
+
+    const actor = await findUserWithRoleById(actorUserId)
+    if (!actor || !isAdminRoleName(actor.role)) {
+      return res.status(403).json({ message: 'Bạn không có quyền đặt lại mật khẩu' })
+    }
+
+    const target = await findUserWithRoleById(targetUserId)
+    if (!target) {
+      return res.status(404).json({ message: 'Không tìm thấy tài khoản cần đặt lại mật khẩu' })
+    }
+
+    if (isAdminRoleName(target.role)) {
+      return res.status(403).json({ message: 'Chỉ hỗ trợ đặt lại mật khẩu cho tài khoản không phải admin' })
+    }
+
+    await updatePasswordForUser({ userId: target.id, newPassword })
+
+    await logActivity({
+      userId: actor.id,
+      action: 'user.reset_password',
+      description: `Đặt lại mật khẩu cho: ${String(target.username || target.full_name || '-').trim() || '-'}`,
+      entityType: 'user',
+      entityId: target.id,
+    })
+
+    return res.json({ ok: true })
+  } catch (error) {
+    return res.status(500).json({ message: 'Lỗi server', detail: String(error.message || error) })
   }
 })
 
