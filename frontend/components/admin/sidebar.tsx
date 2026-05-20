@@ -582,12 +582,19 @@ export function Sidebar() {
       return
     }
 
-    if (!profileForm.fullName.trim()) {
+    const nextFullName = profileForm.fullName.trim()
+    const nextUsername = profileForm.username.trim()
+    const currentFullName = String(loggedInUser.fullName || "").trim()
+    const currentUsername = String(loggedInUser.username || "").trim()
+    const hasProfileChange =
+      nextFullName !== currentFullName || nextUsername !== currentUsername
+
+    if (!nextFullName) {
       alert("Họ tên không được để trống")
       return
     }
 
-    if (!profileForm.username.trim()) {
+    if (!nextUsername) {
       alert("Tài khoản không được để trống")
       return
     }
@@ -625,8 +632,8 @@ export function Sidebar() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: profileForm.fullName.trim(),
-          username: profileForm.username.trim(),
+          name: nextFullName,
+          username: nextUsername,
           roleId: profileRoleId,
           departmentName: profileDepartment || null,
           actorUserId: loggedInUser.id || null,
@@ -669,10 +676,18 @@ export function Sidebar() {
         })
       }
 
+      if (hasProfileChange) {
+        toast({
+          description: "Cập nhật thông tin thành công",
+          duration: 2000,
+          className: "border-emerald-200 bg-emerald-50 text-emerald-900 rounded-2xl px-4 py-3 shadow-lg",
+        })
+      }
+
       const updatedUser = {
         ...loggedInUser,
-        fullName: profileForm.fullName.trim(),
-        username: profileForm.username.trim(),
+        fullName: nextFullName,
+        username: nextUsername,
       }
 
       setLoggedInUser(updatedUser)

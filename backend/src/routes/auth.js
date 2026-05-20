@@ -54,6 +54,97 @@ function parsePermissions(rawValue) {
     .filter(Boolean)
 }
 
+async function findUserForPasswordChange({ userId, username }) {
+  const hasUserId = Number.isInteger(Number(userId)) && Number(userId) > 0
+  const normalizedUsername = String(username || "").trim()
+
+  const byIdQueries = [
+    `SELECT id, username, full_name, password_hash FROM users WHERE id = ? LIMIT 1`,
+    `SELECT id, username, full_name, password FROM users WHERE id = ? LIMIT 1`,
+  ]
+
+  const byUsernameQueries = [
+    `SELECT id, username, full_name, password_hash FROM users WHERE username = ? LIMIT 1`,
+    `SELECT id, username, full_name, password FROM users WHERE username = ? LIMIT 1`,
+  ]
+
+  let lastError = null
+  let rows = []
+
+  if (hasUserId) {
+    for (const query of byIdQueries) {
+      try {
+        const [result] = await pool.query(query, [Number(userId)])
+        rows = result
+        lastError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastError = error
+          continue
+        }
+
+        throw error
+      }
+    }
+  }
+
+  if (!rows.length && normalizedUsername) {
+    for (const query of byUsernameQueries) {
+      try {
+        const [result] = await pool.query(query, [normalizedUsername])
+        rows = result
+        lastError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastError = error
+          continue
+        }
+
+        throw error
+      }
+    }
+  }
+
+  if (lastError && rows.length === 0) {
+    throw lastError
+  }
+
+  return rows[0] || null
+}
+
+async function updatePasswordForUser({ userId, newPassword }) {
+  const queries = [
+    "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?",
+    "UPDATE users SET password_hash = ? WHERE id = ?",
+    "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?",
+    "UPDATE users SET password = ? WHERE id = ?",
+  ]
+
+  let lastError = null
+
+  for (const query of queries) {
+    try {
+      await pool.query(query, [newPassword, userId])
+      return true
+    } catch (error) {
+      if (error.code === "ER_BAD_FIELD_ERROR") {
+        lastError = error
+        continue
+      }
+
+      throw error
+    }
+  }
+
+  if (lastError) {
+    throw lastError
+  }
+
+  return false
+}
+
 function getClientIp(req) {
   const forwarded = req.headers["x-forwarded-for"]
   const realIp = req.headers["x-real-ip"]
@@ -426,6 +517,47 @@ router.post("/logout", async (req, res) => {
       description: `Đăng xuất: ${username}`,
       entityType: "user",
       entityId: Number.isInteger(userId) && userId > 0 ? userId : null,
+    })
+
+    return res.json({ ok: true })
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
+router.post("/change-password", async (req, res) => {
+  try {
+    const userId = Number(req.body?.userId || req.headers["x-user-id"] || 0)
+    const username = String(req.body?.username || req.headers["x-user-name"] || "").trim()
+    const currentPassword = String(req.body?.currentPassword || "").trim()
+    const newPassword = String(req.body?.newPassword || "").trim()
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Thiếu mật khẩu hiện tại hoặc mật khẩu mới" })
+    }
+
+    if (newPassword.length < 4) {
+      return res.status(400).json({ message: "Mật khẩu mới quá ngắn" })
+    }
+
+    const user = await findUserForPasswordChange({ userId, username })
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy tài khoản" })
+    }
+
+    const storedPassword = user.password_hash ?? user.password
+    if (String(storedPassword || "") !== currentPassword) {
+      return res.status(401).json({ message: "Mật khẩu hiện tại không đúng" })
+    }
+
+    await updatePasswordForUser({ userId: user.id, newPassword })
+
+    await logActivity({
+      userId: user.id,
+      action: "user.change_password",
+      description: `Đổi mật khẩu: ${String(user.username || user.full_name || "-").trim() || "-"}`,
+      entityType: "user",
+      entityId: user.id,
     })
 
     return res.json({ ok: true })

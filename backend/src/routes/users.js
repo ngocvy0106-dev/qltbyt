@@ -607,13 +607,15 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" })
     }
 
-    await logActivity({
-      userId: actorUserId,
-      action: "user.update",
-      description: `Tài khoản ${String(username || "-").trim() || "-"}`,
-      entityType: "user",
-      entityId: id,
-    })
+    if (!actorUserId || actorUserId !== id) {
+      await logActivity({
+        userId: actorUserId,
+        action: "user.update",
+        description: `Tài khoản ${String(username || "-").trim() || "-"}`,
+        entityType: "user",
+        entityId: id,
+      })
+    }
 
     return res.json({ ok: true })
   } catch (error) {
