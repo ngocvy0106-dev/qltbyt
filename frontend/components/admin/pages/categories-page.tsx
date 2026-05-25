@@ -207,6 +207,7 @@ export function CategoriesPage() {
                     <div className="rounded-lg bg-primary/10 p-2">
                       <Icon className="h-4 w-4 text-primary" />
                     </div>
+                    <span className="text-xs tracking-widest text-muted-foreground">•••</span>
                   </div>
 
                   <h2 className="line-clamp-1 text-[1.6rem] font-bold leading-tight text-foreground">{category.name}</h2>
