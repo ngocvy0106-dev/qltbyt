@@ -265,7 +265,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Thiếu tài khoản hoặc mật khẩu" })
     }
 
-    const queryVariants = [
+     const queryVariants = [
       `SELECT
          u.id,
          u.username,
@@ -278,7 +278,7 @@ router.post("/login", async (req, res) => {
         r.permissions AS role_permissions
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ?
+       WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
          u.id,
@@ -291,7 +291,7 @@ router.post("/login", async (req, res) => {
          r.permission AS role_permissions
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ?
+       WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
          u.id,
@@ -304,7 +304,7 @@ router.post("/login", async (req, res) => {
          r.permission AS role_permissions
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ?
+       WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
          u.id,
@@ -316,7 +316,7 @@ router.post("/login", async (req, res) => {
          r.permission AS role_permissions
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ?
+       WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
          u.id,
@@ -327,7 +327,7 @@ router.post("/login", async (req, res) => {
          COALESCE(r.role_name, 'User') AS role
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ?
+       WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
          u.id,
@@ -337,7 +337,7 @@ router.post("/login", async (req, res) => {
          COALESCE(r.role_name, 'User') AS role
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ?
+       WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
     ]
 
@@ -346,7 +346,7 @@ router.post("/login", async (req, res) => {
 
     for (const query of queryVariants) {
       try {
-        const [result] = await pool.query(query, [username])
+        const [result] = await pool.query(query, [username, username])
         rows = result
         lastError = null
         break
