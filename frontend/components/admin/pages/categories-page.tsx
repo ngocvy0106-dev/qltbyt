@@ -203,11 +203,10 @@ export function CategoriesPage() {
             return (
               <Card key={category.id} className="border-border bg-card transition-all hover:border-primary/35 hover:shadow-sm">
                 <CardContent className="p-3">
-                  <div className="mb-3 flex items-center justify-between">
+                  <div className="mb-3 flex items-center">
                     <div className="rounded-lg bg-primary/10 p-2">
                       <Icon className="h-4 w-4 text-primary" />
                     </div>
-                    <span className="text-xs tracking-widest text-muted-foreground">•••</span>
                   </div>
 
                   <h2 className="line-clamp-1 text-[1.6rem] font-bold leading-tight text-foreground">{category.name}</h2>
