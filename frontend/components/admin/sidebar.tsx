@@ -13,7 +13,6 @@ import {
   Shield,
   UserCog,
   Truck,
-  Boxes,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -77,11 +76,6 @@ const menuSections: MenuSection[] = [
         title: "Danh sách thiết bị",
         icon: Package,
         href: "/devices",
-      },
-      {
-        title: "Danh mục thiết bị",
-        icon: Boxes,
-        href: "/categories",
       },
       {
         title: "Điều chuyển - Cấp phát",
