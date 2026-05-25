@@ -201,18 +201,22 @@ export function CategoriesPage() {
             const Icon = getCategoryIcon(category.name)
 
             return (
-              <Card key={category.id} className="border-border bg-card transition-all hover:border-primary/35 hover:shadow-sm">
-                <CardContent className="p-3">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="rounded-lg bg-primary/10 p-2">
+              <Card
+                key={category.id}
+                className="aspect-square border-border bg-card transition-all hover:border-primary/35 hover:shadow-sm"
+              >
+                <CardContent className="flex h-full flex-col p-3">
+                  <div className="mb-3">
+                    <div className="inline-flex rounded-lg bg-primary/10 p-2">
                       <Icon className="h-4 w-4 text-primary" />
                     </div>
-                    <span className="text-xs tracking-widest text-muted-foreground">•••</span>
                   </div>
 
-                  <h2 className="line-clamp-1 text-[1.6rem] font-bold leading-tight text-foreground">{category.name}</h2>
-                  <p className="mt-1.5 text-sm text-muted-foreground">Số thiết bị</p>
-                  <p className="mt-1 text-2xl font-bold leading-none text-primary">{category.deviceCount}</p>
+                  <h2 className="line-clamp-2 text-lg font-bold leading-tight text-foreground">
+                    {category.name}
+                  </h2>
+                  <p className="mt-1.5 text-xs text-muted-foreground">Số thiết bị</p>
+                  <p className="mt-1 text-xl font-bold leading-none text-primary">{category.deviceCount}</p>
                 </CardContent>
               </Card>
             )
