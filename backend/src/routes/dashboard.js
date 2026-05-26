@@ -705,6 +705,19 @@ router.get("/overview", async (_, res) => {
       }
     }
 
+    // Get QR scan count for today (if activity table/action exists)
+    let qrScanCountToday = 0
+    try {
+      const [scanRows] = await pool.query(
+        "SELECT COUNT(*) as count FROM activity WHERE `action` = 'device.qr_scan' AND DATE(created_at) = CURDATE()"
+      )
+      qrScanCountToday = scanRows[0]?.count || 0
+    } catch (error) {
+      if (error.code !== "ER_NO_SUCH_TABLE") {
+        throw error
+      }
+    }
+
     const maintenanceList = normalizedDevices
       .filter((device) => ["maintenance", "repairing", "broken"].includes(device.status))
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
@@ -728,6 +741,7 @@ router.get("/overview", async (_, res) => {
             : "Chưa có cột giá trị tài sản trong bảng devices",
         upcomingMaintenance,
         repairsCount,
+        qrScanCountToday,
       },
       maintenanceList,
       recentActivities,

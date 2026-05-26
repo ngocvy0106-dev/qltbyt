@@ -31,6 +31,7 @@ interface DashboardSummary {
   assetValueNote: string
   upcomingMaintenance: number
   repairsCount: number
+  qrScanCountToday: number
 }
 
 interface DashboardMaintenanceItem {
@@ -112,6 +113,7 @@ export default function AdminDashboard() {
     assetValueNote: "Chưa có dữ liệu",
     upcomingMaintenance: 0,
     repairsCount: 0,
+    qrScanCountToday: 0,
   })
   const [hoveredAssetDisplay, setHoveredAssetDisplay] = useState<string | null>(null)
   const [maintenanceList, setMaintenanceList] = useState<DashboardMaintenanceItem[]>([])
@@ -197,6 +199,7 @@ export default function AdminDashboard() {
           assetValueNote: "Không thể tải dữ liệu từ database",
           upcomingMaintenance: 0,
           repairsCount: 0,
+          qrScanCountToday: 0,
         })
         setMaintenanceList([])
         setRecentActivities([])
@@ -320,7 +323,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <Card className="border-border">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between">
@@ -349,6 +352,23 @@ export default function AdminDashboard() {
                       </div>
                       <div className="rounded-lg bg-primary/10 p-3">
                         <Calendar className="h-6 w-6 text-primary" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-base text-muted-foreground">Số lần quét QR trong ngày</p>
+                        <p className="mt-3 text-5xl font-bold leading-none text-foreground">
+                          {isLoading ? "--" : summary.qrScanCountToday}
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">Hôm nay</p>
+                      </div>
+                      <div className="rounded-lg bg-primary/10 p-3">
+                        <QrCode className="h-6 w-6 text-primary" />
                       </div>
                     </div>
                   </CardContent>
