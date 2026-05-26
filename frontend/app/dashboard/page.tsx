@@ -17,6 +17,7 @@ import {
   QrCode,
   ShieldAlert,
   Wrench,
+  Boxes, 
 } from "lucide-react"
 
 interface DashboardStats {
@@ -62,7 +63,7 @@ const topStatConfigs = [
   {
     key: "totalDevices",
     title: "Tổng thiết bị",
-    icon: QrCode,
+    icon: Boxes,
     border: "border-l-primary",
     text: "text-primary",
   },
