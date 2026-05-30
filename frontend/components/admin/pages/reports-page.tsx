@@ -693,19 +693,6 @@ export function ReportsPage() {
     loadDashboard()
   }, [apiBaseUrl, isUserHydrated, loggedInUser.role, loggedInUser.departmentName, loggedInUser.fullName, loggedInUser.username])
 
-  // Auto-refresh dashboard data every 5 seconds to show updated device status
-  useEffect(() => {
-    if (!isUserHydrated) {
-      return
-    }
-
-    const intervalId = setInterval(() => {
-      void loadDashboard()
-    }, 5000)
-
-    return () => clearInterval(intervalId)
-  }, [isUserHydrated, loggedInUser])
-
   useEffect(() => {
     const timer = window.setTimeout(() => setAnimateCharts(true), 80)
 
