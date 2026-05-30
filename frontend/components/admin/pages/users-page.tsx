@@ -216,6 +216,7 @@ export function UsersPage() {
   const [createForm, setCreateForm] = useState({
     name: "",
     username: "",
+    email: "",
     roleId: "",
     password: "123456",
     departments: [] as string[],
@@ -489,6 +490,7 @@ export function UsersPage() {
         body: JSON.stringify({
           name: createForm.name.trim(),
           username: createForm.username.trim(),
+          email: createForm.email.trim(),
           roleId: createForm.roleId ? Number(createForm.roleId) : null,
           password: createForm.password.trim() || "123456",
           status: "Hoạt động",
@@ -507,6 +509,7 @@ export function UsersPage() {
       setCreateForm({
         name: "",
         username: "",
+        email: "",
         roleId: "",
         password: "123456",
         departments: [],
@@ -1039,6 +1042,15 @@ export function UsersPage() {
               <Input
                 value={createForm.username}
                 onChange={(event) => setCreateForm((prev) => ({ ...prev, username: event.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={createForm.email}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, email: event.target.value }))}
               />
             </div>
 

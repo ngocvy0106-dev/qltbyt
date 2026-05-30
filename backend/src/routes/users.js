@@ -459,11 +459,12 @@ router.get("/activity-logs", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { name, username, roleId, password, status, departmentName } = req.body || {}
+    const { name, username, roleId, password, status, departmentName, email } = req.body || {}
     const actorUserId = resolveActorUserId(req)
 
     const normalizedName = String(name || "").trim()
     const normalizedUsername = String(username || "").trim()
+    const normalizedEmail = String(email || "").trim() || null
     const normalizedPassword = String(password || "123456").trim() || "123456"
     const normalizedRoleId = roleId === null || roleId === undefined || roleId === "" ? null : Number(roleId)
     const normalizedStatus = String(status || "Hoạt động").trim() || "Hoạt động"
@@ -478,6 +479,14 @@ router.post("/", async (req, res) => {
     }
 
     const queryVariants = [
+      `INSERT INTO users (full_name, username, email, password_hash, role_id, department_name, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      `INSERT INTO users (full_name, username, email, password_hash, role_id, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      `INSERT INTO users (full_name, username, email, password_hash, role_id, department_name, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      `INSERT INTO users (full_name, username, email, password_hash, role_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
       `INSERT INTO users (full_name, username, password_hash, role_id, department_name, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       `INSERT INTO users (full_name, username, password_hash, role_id, status, created_at, updated_at)
@@ -489,6 +498,10 @@ router.post("/", async (req, res) => {
     ]
 
     const queryParams = [
+      [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId, normalizedDepartmentName, normalizedStatus],
+      [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId, normalizedStatus],
+      [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId, normalizedDepartmentName],
+      [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId],
       [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId, normalizedDepartmentName, normalizedStatus],
       [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId, normalizedStatus],
       [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId, normalizedDepartmentName],
