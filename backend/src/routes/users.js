@@ -37,6 +37,7 @@ function normalizeUserRow(row) {
     id: row.id,
     name: row.full_name || row.username || "-",
     username: row.username || "-",
+    email: row.email || "-",
     role: row.role_name || "-",
     roleId: row.role_id || null,
     department: row.department_name || row.department || (row.department_id ? String(row.department_id) : null),
@@ -156,6 +157,7 @@ async function queryUsersWithRole() {
     `SELECT
        u.id,
        u.username,
+       u.email,
        u.full_name,
        u.created_at,
        u.updated_at,
@@ -170,6 +172,7 @@ async function queryUsersWithRole() {
     `SELECT
        u.id,
        u.username,
+       u.email,
        u.full_name,
        u.created_at,
        u.updated_at,
@@ -184,6 +187,7 @@ async function queryUsersWithRole() {
     `SELECT
        u.id,
        u.username,
+       u.email,
        u.full_name,
        u.created_at,
        u.updated_at,
@@ -197,6 +201,7 @@ async function queryUsersWithRole() {
     `SELECT
        u.id,
        u.username,
+       u.email,
        u.full_name,
        u.created_at,
        u.updated_at,
@@ -209,6 +214,7 @@ async function queryUsersWithRole() {
     `SELECT
        u.id,
        u.username,
+       u.email,
        u.full_name,
        u.created_at,
        u.updated_at,
@@ -254,6 +260,7 @@ router.get("/summary", async (req, res) => {
         !search ||
         String(item.name).toLowerCase().includes(search) ||
         String(item.username).toLowerCase().includes(search) ||
+        String(item.email).toLowerCase().includes(search) ||
         String(item.role).toLowerCase().includes(search)
 
       const matchedRole = !roleFilter || roleFilter === "all" || String(item.role).toLowerCase() === roleFilter

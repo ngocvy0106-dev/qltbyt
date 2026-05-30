@@ -58,6 +58,7 @@ interface UserItem {
   id: number
   name: string
   username: string
+  email: string
   role: string
   roleId?: number | null
   department: string | null
@@ -789,10 +790,11 @@ export function UsersPage() {
           </div>
 
           <div className="max-h-[62vh] overflow-x-auto overflow-y-auto bg-card">
-            <table className="w-full min-w-[980px] table-auto border-collapse text-center align-middle [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-20 [&_thead]:bg-[#a7d8c8] [&_thead_th]:bg-[#a7d8c8] [&_thead_th]:border-b [&_thead_th]:border-[#7fc8af] [&_thead_th]:font-bold [&_thead_th]:text-[#0f3b2f] [&_thead_th:first-child]:rounded-tl-lg [&_thead_th:last-child]:rounded-tr-lg [&_tbody]:bg-card [&_tbody_td]:border-b [&_tbody_td]:border-border/60 [&_th]:border-r [&_th]:border-border/60 [&_td]:border-r [&_td]:border-border/60 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
+            <table className="w-full min-w-[1100px] table-auto border-collapse text-center align-middle [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-20 [&_thead]:bg-[#a7d8c8] [&_thead_th]:bg-[#a7d8c8] [&_thead_th]:border-b [&_thead_th]:border-[#7fc8af] [&_thead_th]:font-bold [&_thead_th]:text-[#0f3b2f] [&_thead_th:first-child]:rounded-tl-lg [&_thead_th:last-child]:rounded-tr-lg [&_tbody]:bg-card [&_tbody_td]:border-b [&_tbody_td]:border-border/60 [&_th]:border-r [&_th]:border-border/60 [&_td]:border-r [&_td]:border-border/60 [&_th:last-child]:border-r-0 [&_td:last-child]:border-r-0">
               <thead>
                 <tr className="border-b border-[#7fc8af] text-center">
                   <th className="min-w-[260px] px-4 py-4 text-sm font-bold text-[#0f3b2f]">Người dùng</th>
+                  <th className="min-w-[220px] px-4 py-4 text-sm font-bold text-[#0f3b2f]">Email</th>
                   <th className="w-[110px] whitespace-nowrap px-4 py-4 text-sm font-bold text-[#0f3b2f]">Vai trò</th>
                   <th className="min-w-[220px] px-4 py-4 text-sm font-bold text-[#0f3b2f]">Phòng/Khoa</th>
                   <th className="w-[140px] whitespace-nowrap px-4 py-4 text-sm font-bold text-[#0f3b2f]">Trạng thái</th>
@@ -803,7 +805,7 @@ export function UsersPage() {
               <tbody>
                 {isLoading && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       Đang tải dữ liệu người dùng...
                     </td>
                   </tr>
@@ -811,7 +813,7 @@ export function UsersPage() {
 
                 {!isLoading && filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       Không có dữ liệu người dùng từ database
                     </td>
                   </tr>
@@ -823,6 +825,7 @@ export function UsersPage() {
                       <p className="font-semibold text-foreground">{item.name}</p>
                       <p className="text-sm text-muted-foreground">{item.username}</p>
                     </td>
+                    <td className="px-4 py-4 text-foreground">{item.email || "-"}</td>
                     <td className="whitespace-nowrap px-4 py-4">
                       <Badge className={roleBadgeClass(item.role)}>{item.role}</Badge>
                     </td>
