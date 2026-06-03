@@ -36,97 +36,22 @@ async function updateLastLogin(userId) {
 function parsePermissions(rawValue) {
   const text = String(rawValue || "").trim()
   if (!text) {
-      const queryVariants = [
-      `SELECT
-        u.id,
-        u.username,
-        u.email,
-        u.password_hash,
-        u.full_name,
-        u.department_id,
-        dep.name AS department_name,
-        COALESCE(r.role_name, 'User') AS role,
-        r.permissions AS role_permissions
-       FROM users u
-       LEFT JOIN \`role\` r ON u.role_id = r.id
-       LEFT JOIN departments dep ON u.department_id = dep.id
-       WHERE u.username = ? OR u.email = ?
-       LIMIT 1`,
-      `SELECT
-        u.id,
-        u.username,
-        u.email,
-        u.password_hash,
-        u.full_name,
-        u.department_name,
-        u.department,
-        COALESCE(r.role_name, 'User') AS role,
-        r.permissions AS role_permissions
-       FROM users u
-       LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ? OR u.email = ?
-       LIMIT 1`,
-      `SELECT
-        u.id,
-        u.username,
-        u.email,
-        u.password_hash,
-        u.full_name,
-        u.department_name,
-        COALESCE(r.role_name, 'User') AS role,
-        r.permission AS role_permissions
-       FROM users u
-       LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ? OR u.email = ?
-       LIMIT 1`,
-      `SELECT
-        u.id,
-        u.username,
-        u.email,
-        u.password_hash,
-        u.full_name,
-        u.department,
-        COALESCE(r.role_name, 'User') AS role,
-        r.permission AS role_permissions
-       FROM users u
-       LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ? OR u.email = ?
-       LIMIT 1`,
-      `SELECT
-        u.id,
-        u.username,
-        u.email,
-        u.password_hash,
-        u.full_name,
-        COALESCE(r.role_name, 'User') AS role,
-        r.permission AS role_permissions
-       FROM users u
-       LEFT JOIN \`role\` r ON u.role_id = r.id
-       WHERE u.username = ? OR u.email = ?
-       LIMIT 1`,
-     ]
-    for (const query of byUsernameQueries) {
-      try {
-        const [result] = await pool.query(query, [normalizedUsername])
-        rows = result
-        lastError = null
-        break
-      } catch (error) {
-        if (error.code === "ER_BAD_FIELD_ERROR" || error.code === "ER_NO_SUCH_TABLE") {
-          lastError = error
-          continue
-        }
+    return []
+  }
 
-        throw error
-      }
+  try {
+    const parsed = JSON.parse(text)
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item || "").trim()).filter(Boolean)
     }
+  } catch {
+    // ignore parse error and fallback to comma-separated parsing
   }
 
-  if (lastError && rows.length === 0) {
-    throw lastError
-  }
-
-  return rows[0] || null
+  return text
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 async function updatePasswordForUser({ userId, newPassword }) {
@@ -280,15 +205,30 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Thiếu tài khoản hoặc mật khẩu" })
     }
 
-     const queryVariants = [
+      const queryVariants = [
       `SELECT
-         u.id,
-         u.username,
+        u.id,
+        u.username,
         u.email,
-         u.password_hash,
-         u.full_name,
-         u.department_name,
-         u.department,
+        u.password_hash,
+        u.full_name,
+        u.department_id,
+        dep.name AS department_name,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permissions AS role_permissions
+       FROM users u
+       LEFT JOIN \`role\` r ON u.role_id = r.id
+       LEFT JOIN departments dep ON u.department_id = dep.id
+       WHERE u.username = ? OR u.email = ?
+       LIMIT 1`,
+      `SELECT
+        u.id,
+        u.username,
+        u.email,
+        u.password_hash,
+        u.full_name,
+        u.department_name,
+        u.department,
         COALESCE(r.role_name, 'User') AS role,
         r.permissions AS role_permissions
        FROM users u
@@ -296,65 +236,65 @@ router.post("/login", async (req, res) => {
        WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
-         u.id,
-         u.username,
+        u.id,
+        u.username,
         u.email,
-         u.password_hash,
-         u.full_name,
-         u.department_name,
-         COALESCE(r.role_name, 'User') AS role,
-         r.permission AS role_permissions
+        u.password_hash,
+        u.full_name,
+        u.department_name,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permission AS role_permissions
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
        WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
-         u.id,
-         u.username,
+        u.id,
+        u.username,
         u.email,
-         u.password_hash,
-         u.full_name,
-         u.department,
-         COALESCE(r.role_name, 'User') AS role,
-         r.permission AS role_permissions
+        u.password_hash,
+        u.full_name,
+        u.department,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permission AS role_permissions
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
        WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
-         u.id,
-         u.username,
+        u.id,
+        u.username,
         u.email,
-         u.password_hash,
-         u.full_name,
-         COALESCE(r.role_name, 'User') AS role,
-         r.permission AS role_permissions
+        u.password_hash,
+        u.full_name,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permission AS role_permissions
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
        WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
-         u.id,
-         u.username,
-         u.email,
-         u.password_hash,
-         u.full_name,
-         COALESCE(r.role_name, 'User') AS role
+        u.id,
+        u.username,
+        u.email,
+        u.password_hash,
+        u.full_name,
+        COALESCE(r.role_name, 'User') AS role
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
        WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
       `SELECT
-         u.id,
-         u.username,
-         u.password_hash,
-         u.full_name,
-         COALESCE(r.role_name, 'User') AS role
+        u.id,
+        u.username,
+        u.password_hash,
+        u.full_name,
+        COALESCE(r.role_name, 'User') AS role
        FROM users u
        LEFT JOIN \`role\` r ON u.role_id = r.id
        WHERE u.username = ? OR u.email = ?
        LIMIT 1`,
-    ]
+     ]
 
     let rows = []
     let lastError = null
@@ -366,7 +306,7 @@ router.post("/login", async (req, res) => {
         lastError = null
         break
       } catch (error) {
-        if (error.code === "ER_BAD_FIELD_ERROR") {
+        if (error.code === "ER_BAD_FIELD_ERROR" || error.code === "ER_NO_SUCH_TABLE") {
           lastError = error
           continue
         }
