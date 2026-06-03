@@ -179,6 +179,22 @@ async function queryUsersWithRole() {
        u.full_name,
        u.created_at,
        u.updated_at,
+       u.status,
+       u.department_id,
+       dep.name AS department_name,
+       u.role_id,
+       r.role_name
+     FROM users u
+     LEFT JOIN role r ON u.role_id = r.id
+     LEFT JOIN departments dep ON u.department_id = dep.id
+    ORDER BY u.id ASC`,
+    `SELECT
+       u.id,
+       u.username,
+       u.email,
+       u.full_name,
+       u.created_at,
+       u.updated_at,
        u.last_login,
        u.status,
        u.department_name,
@@ -600,6 +616,22 @@ router.get("/:id", async (req, res) => {
          u.full_name,
          u.created_at,
          u.updated_at,
+         u.status,
+         u.department_id,
+         dep.name AS department_name,
+         u.role_id,
+         r.role_name
+       FROM users u
+       LEFT JOIN role r ON u.role_id = r.id
+       LEFT JOIN departments dep ON u.department_id = dep.id
+       WHERE u.id = ?
+       LIMIT 1`,
+      `SELECT
+         u.id,
+         u.username,
+         u.full_name,
+         u.created_at,
+         u.updated_at,
          u.last_login,
          u.status,
          u.department_name,
@@ -667,6 +699,11 @@ router.get("/:id", async (req, res) => {
 
     if (!userRow.department_name && !userRow.department) {
       const departmentQueries = [
+        `SELECT dep.name AS department_name
+         FROM users u
+         LEFT JOIN departments dep ON u.department_id = dep.id
+         WHERE u.id = ?
+         LIMIT 1`,
         "SELECT department_id FROM users WHERE id = ? LIMIT 1",
         "SELECT department_name, department FROM users WHERE id = ? LIMIT 1",
         "SELECT department_name FROM users WHERE id = ? LIMIT 1",
