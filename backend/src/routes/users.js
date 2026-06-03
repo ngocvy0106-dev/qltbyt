@@ -41,6 +41,7 @@ function normalizeUserRow(row) {
     role: row.role_name || "-",
     roleId: row.role_id || null,
     department: row.department_name || row.department || (row.department_id ? String(row.department_id) : null),
+    departmentId: row.department_id ?? null,
     status: normalizeStatus(row.status),
     lastLogin: row.last_login || row.updated_at || row.created_at || null,
   }
@@ -163,6 +164,23 @@ async function queryUsersWithRole() {
        u.updated_at,
        u.last_login,
        u.status,
+       u.department_id,
+       dep.name AS department_name,
+       u.role_id,
+       r.role_name
+     FROM users u
+     LEFT JOIN role r ON u.role_id = r.id
+     LEFT JOIN departments dep ON u.department_id = dep.id
+    ORDER BY u.id ASC`,
+    `SELECT
+       u.id,
+       u.username,
+       u.email,
+       u.full_name,
+       u.created_at,
+       u.updated_at,
+       u.last_login,
+       u.status,
        u.department_name,
        u.role_id,
        r.role_name
@@ -232,7 +250,7 @@ async function queryUsersWithRole() {
       const [rows] = await pool.query(query)
       return rows
     } catch (error) {
-      if (error.code === "ER_BAD_FIELD_ERROR") {
+      if (error.code === "ER_BAD_FIELD_ERROR" || error.code === "ER_NO_SUCH_TABLE") {
         lastError = error
         continue
       }
@@ -459,7 +477,7 @@ router.get("/activity-logs", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { name, username, roleId, password, status, departmentName, email } = req.body || {}
+    const { name, username, roleId, password, status, departmentId, email } = req.body || {}
     const actorUserId = resolveActorUserId(req)
 
     const normalizedName = String(name || "").trim()
@@ -468,7 +486,11 @@ router.post("/", async (req, res) => {
     const normalizedPassword = String(password || "123456").trim() || "123456"
     const normalizedRoleId = roleId === null || roleId === undefined || roleId === "" ? null : Number(roleId)
     const normalizedStatus = String(status || "Hoạt động").trim() || "Hoạt động"
-    const normalizedDepartmentName = String(departmentName || "").trim() || null
+    const normalizedDepartmentId =
+      departmentId === null || departmentId === undefined || departmentId === ""
+        ? null
+        : Number(departmentId)
+    const safeDepartmentId = Number.isInteger(normalizedDepartmentId) ? normalizedDepartmentId : null
 
     if (!normalizedName) {
       return res.status(400).json({ message: "Họ tên không được để trống" })
@@ -479,32 +501,29 @@ router.post("/", async (req, res) => {
     }
 
     const queryVariants = [
-      `INSERT INTO users (full_name, username, email, password_hash, role_id, department_name, status, created_at, updated_at)
+      `INSERT INTO users (full_name, username, email, password_hash, role_id, department_id, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       `INSERT INTO users (full_name, username, email, password_hash, role_id, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      `INSERT INTO users (full_name, username, email, password_hash, role_id, department_name, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       `INSERT INTO users (full_name, username, email, password_hash, role_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-      `INSERT INTO users (full_name, username, password_hash, role_id, department_name, status, created_at, updated_at)
+      `INSERT INTO users (full_name, username, password_hash, role_id, department_id, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       `INSERT INTO users (full_name, username, password_hash, role_id, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-      `INSERT INTO users (full_name, username, password_hash, role_id, department_name, created_at, updated_at)
+      `INSERT INTO users (full_name, username, password_hash, role_id, department_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
       `INSERT INTO users (full_name, username, password_hash, role_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, NOW(), NOW())`,
     ]
 
     const queryParams = [
-      [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId, normalizedDepartmentName, normalizedStatus],
+      [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId, safeDepartmentId, normalizedStatus],
       [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId, normalizedStatus],
-      [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId, normalizedDepartmentName],
       [normalizedName, normalizedUsername, normalizedEmail, normalizedPassword, normalizedRoleId],
-      [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId, normalizedDepartmentName, normalizedStatus],
+      [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId, safeDepartmentId, normalizedStatus],
       [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId, normalizedStatus],
-      [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId, normalizedDepartmentName],
+      [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId, safeDepartmentId],
       [normalizedName, normalizedUsername, normalizedPassword, normalizedRoleId],
     ]
 
@@ -518,7 +537,7 @@ router.post("/", async (req, res) => {
         lastError = null
         break
       } catch (error) {
-        if (error.code === "ER_BAD_FIELD_ERROR") {
+        if (error.code === "ER_BAD_FIELD_ERROR" || error.code === "ER_NO_SUCH_TABLE") {
           lastError = error
           continue
         }
@@ -558,6 +577,23 @@ router.get("/:id", async (req, res) => {
     }
 
     const queries = [
+      `SELECT
+        u.id,
+        u.username,
+        u.full_name,
+        u.created_at,
+        u.updated_at,
+        u.last_login,
+        u.status,
+        u.department_id,
+        dep.name AS department_name,
+        u.role_id,
+        r.role_name
+       FROM users u
+       LEFT JOIN role r ON u.role_id = r.id
+       LEFT JOIN departments dep ON u.department_id = dep.id
+       WHERE u.id = ?
+       LIMIT 1`,
       `SELECT
          u.id,
          u.username,
@@ -631,6 +667,7 @@ router.get("/:id", async (req, res) => {
 
     if (!userRow.department_name && !userRow.department) {
       const departmentQueries = [
+        "SELECT department_id FROM users WHERE id = ? LIMIT 1",
         "SELECT department_name, department FROM users WHERE id = ? LIMIT 1",
         "SELECT department_name FROM users WHERE id = ? LIMIT 1",
         "SELECT department FROM users WHERE id = ? LIMIT 1",
@@ -668,16 +705,20 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" })
     }
 
-    const { name, username, roleId, departmentName, skipActivityLog } = req.body || {}
+    const { name, username, roleId, departmentId, skipActivityLog } = req.body || {}
 
-    const normalizedDepartmentName = String(departmentName || "").trim() || null
+    const normalizedDepartmentId =
+      departmentId === null || departmentId === undefined || departmentId === ""
+        ? null
+        : Number(departmentId)
+    const safeDepartmentId = Number.isInteger(normalizedDepartmentId) ? normalizedDepartmentId : null
 
     const queryVariants = [
       `UPDATE users
        SET full_name = ?,
            username = ?,
            role_id = ?,
-           department_name = ?,
+           department_id = ?,
            updated_at = NOW()
        WHERE id = ?`,
       `UPDATE users
@@ -696,8 +737,8 @@ router.put("/:id", async (req, res) => {
     ]
 
     const queryParams = [
-      [name ?? null, username ?? null, roleId ?? null, normalizedDepartmentName, id],
-      [name ?? null, username ?? null, roleId ?? null, normalizedDepartmentName, id],
+      [name ?? null, username ?? null, roleId ?? null, safeDepartmentId, id],
+      [name ?? null, username ?? null, roleId ?? null, safeDepartmentId, id],
       [name ?? null, username ?? null, roleId ?? null, id],
     ]
 

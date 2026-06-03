@@ -72,6 +72,10 @@ async function resolveReceiverDepartmentName(connection, receiverUsers) {
 
   const placeholders = receivers.map(() => "?").join(", ")
   const queryVariants = [
+    `SELECT u.id, u.department_id, dep.name AS department_name, u.department
+     FROM users u
+     LEFT JOIN departments dep ON u.department_id = dep.id
+     WHERE u.id IN (${placeholders})`,
     `SELECT id, department_name, department
      FROM users
      WHERE id IN (${placeholders})`,
@@ -102,7 +106,7 @@ async function resolveReceiverDepartmentName(connection, receiverUsers) {
         return Array.from(departmentNames)[0]
       }
     } catch (error) {
-      if (error.code !== "ER_BAD_FIELD_ERROR") {
+      if (error.code !== "ER_BAD_FIELD_ERROR" && error.code !== "ER_NO_SUCH_TABLE") {
         throw error
       }
     }

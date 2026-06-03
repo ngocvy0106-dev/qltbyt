@@ -36,60 +36,75 @@ async function updateLastLogin(userId) {
 function parsePermissions(rawValue) {
   const text = String(rawValue || "").trim()
   if (!text) {
-    return []
-  }
-
-  try {
-    const parsed = JSON.parse(text)
-    if (Array.isArray(parsed)) {
-      return parsed.map((item) => String(item || "").trim()).filter(Boolean)
-    }
-  } catch {
-    // ignore parse error and fallback to comma-separated parsing
-  }
-
-  return text
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-}
-
-async function findUserForPasswordChange({ userId, username }) {
-  const hasUserId = Number.isInteger(Number(userId)) && Number(userId) > 0
-  const normalizedUsername = String(username || "").trim()
-
-  const byIdQueries = [
-    `SELECT id, username, full_name, password_hash FROM users WHERE id = ? LIMIT 1`,
-    `SELECT id, username, full_name, password FROM users WHERE id = ? LIMIT 1`,
-  ]
-
-  const byUsernameQueries = [
-    `SELECT id, username, full_name, password_hash FROM users WHERE username = ? LIMIT 1`,
-    `SELECT id, username, full_name, password FROM users WHERE username = ? LIMIT 1`,
-  ]
-
-  let lastError = null
-  let rows = []
-
-  if (hasUserId) {
-    for (const query of byIdQueries) {
-      try {
-        const [result] = await pool.query(query, [Number(userId)])
-        rows = result
-        lastError = null
-        break
-      } catch (error) {
-        if (error.code === "ER_BAD_FIELD_ERROR") {
-          lastError = error
-          continue
-        }
-
-        throw error
-      }
-    }
-  }
-
-  if (!rows.length && normalizedUsername) {
+      const queryVariants = [
+      `SELECT
+        u.id,
+        u.username,
+        u.email,
+        u.password_hash,
+        u.full_name,
+        u.department_id,
+        dep.name AS department_name,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permissions AS role_permissions
+       FROM users u
+       LEFT JOIN \`role\` r ON u.role_id = r.id
+       LEFT JOIN departments dep ON u.department_id = dep.id
+       WHERE u.username = ? OR u.email = ?
+       LIMIT 1`,
+      `SELECT
+        u.id,
+        u.username,
+        u.email,
+        u.password_hash,
+        u.full_name,
+        u.department_name,
+        u.department,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permissions AS role_permissions
+       FROM users u
+       LEFT JOIN \`role\` r ON u.role_id = r.id
+       WHERE u.username = ? OR u.email = ?
+       LIMIT 1`,
+      `SELECT
+        u.id,
+        u.username,
+        u.email,
+        u.password_hash,
+        u.full_name,
+        u.department_name,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permission AS role_permissions
+       FROM users u
+       LEFT JOIN \`role\` r ON u.role_id = r.id
+       WHERE u.username = ? OR u.email = ?
+       LIMIT 1`,
+      `SELECT
+        u.id,
+        u.username,
+        u.email,
+        u.password_hash,
+        u.full_name,
+        u.department,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permission AS role_permissions
+       FROM users u
+       LEFT JOIN \`role\` r ON u.role_id = r.id
+       WHERE u.username = ? OR u.email = ?
+       LIMIT 1`,
+      `SELECT
+        u.id,
+        u.username,
+        u.email,
+        u.password_hash,
+        u.full_name,
+        COALESCE(r.role_name, 'User') AS role,
+        r.permission AS role_permissions
+       FROM users u
+       LEFT JOIN \`role\` r ON u.role_id = r.id
+       WHERE u.username = ? OR u.email = ?
+       LIMIT 1`,
+     ]
     for (const query of byUsernameQueries) {
       try {
         const [result] = await pool.query(query, [normalizedUsername])
@@ -97,7 +112,7 @@ async function findUserForPasswordChange({ userId, username }) {
         lastError = null
         break
       } catch (error) {
-        if (error.code === "ER_BAD_FIELD_ERROR") {
+        if (error.code === "ER_BAD_FIELD_ERROR" || error.code === "ER_NO_SUCH_TABLE") {
           lastError = error
           continue
         }
@@ -393,6 +408,7 @@ router.post("/login", async (req, res) => {
         email: user.email || null,
         role: user.role,
         fullName: user.full_name,
+        departmentId: user.department_id ?? null,
         departmentName: user.department_name || user.department || null,
         permissions: parsePermissions(user.role_permissions),
       },

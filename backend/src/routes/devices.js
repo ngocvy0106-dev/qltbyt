@@ -468,6 +468,7 @@ router.get("/", async (req, res) => {
     const status = String(req.query.status || "").trim().toLowerCase()
     const role = String(req.query.role || "").trim()
     const departmentName = String(req.query.departmentName || req.query.department || "").trim()
+    const departmentId = String(req.query.departmentId || "").trim()
     const requester = normalizeText(String(req.query.requester || ""))
     const requesterAlt = normalizeText(String(req.query.requesterAlt || ""))
     const userId = Number(req.query.userId || 0)
@@ -486,22 +487,30 @@ router.get("/", async (req, res) => {
       .split(/[;,]/)
       .map((item) => normalizeText(item))
       .filter(Boolean)
+    let normalizedDepartmentIds = String(departmentId || "")
+      .split(/[;,]/)
+      .map((item) => Number(String(item || "").trim()))
+      .filter((value) => Number.isInteger(value) && value > 0)
 
-    if (isEmployeeRequest && normalizedDepartmentNames.length === 0 && Number.isInteger(userId) && userId > 0) {
+    if (
+      isEmployeeRequest &&
+      normalizedDepartmentNames.length === 0 &&
+      normalizedDepartmentIds.length === 0 &&
+      Number.isInteger(userId) &&
+      userId > 0
+    ) {
       const departmentQueries = [
         `SELECT
            COALESCE(
-             NULLIF(TRIM(u.department_name), ''),
-             NULLIF(TRIM(u.department), ''),
              NULLIF(TRIM(dep.name), ''),
              NULLIF(TRIM(CAST(u.department_id AS CHAR)), '')
            ) AS department_value
          FROM users u
          LEFT JOIN departments dep
            ON TRIM(CAST(u.department_id AS CHAR)) = TRIM(CAST(dep.id AS CHAR))
-           OR LOWER(TRIM(CAST(u.department_id AS CHAR))) = LOWER(TRIM(dep.name))
          WHERE u.id = ?
          LIMIT 1`,
+        "SELECT department_id FROM users WHERE id = ? LIMIT 1",
         "SELECT department_name, department FROM users WHERE id = ? LIMIT 1",
         "SELECT department_name FROM users WHERE id = ? LIMIT 1",
         "SELECT department FROM users WHERE id = ? LIMIT 1",
@@ -521,16 +530,24 @@ router.get("/", async (req, res) => {
             continue
           }
 
-          normalizedDepartmentNames = fallbackDepartment
-            .split(/[;,]/)
-            .map((item) => normalizeText(item))
-            .filter(Boolean)
+          const fallbackId = Number(fallbackDepartment)
+          if (Number.isInteger(fallbackId) && fallbackId > 0) {
+            normalizedDepartmentIds = [fallbackId]
+          } else {
+            normalizedDepartmentNames = fallbackDepartment
+              .split(/[;,]/)
+              .map((item) => normalizeText(item))
+              .filter(Boolean)
+          }
 
-          if (normalizedDepartmentNames.length > 0) {
+          if (normalizedDepartmentNames.length > 0 || normalizedDepartmentIds.length > 0) {
             break
           }
         } catch (departmentResolveError) {
-          if (departmentResolveError.code !== "ER_BAD_FIELD_ERROR") {
+          if (
+            departmentResolveError.code !== "ER_BAD_FIELD_ERROR" &&
+            departmentResolveError.code !== "ER_NO_SUCH_TABLE"
+          ) {
             throw departmentResolveError
           }
         }
@@ -712,6 +729,12 @@ router.get("/", async (req, res) => {
     const employeeWhereParams = []
 
     if (isEmployeeRequest) {
+      if (normalizedDepartmentIds.length > 0) {
+        const placeholders = normalizedDepartmentIds.map(() => "?").join(", ")
+        employeeWhereParts.push(`d.department_id IN (${placeholders})`)
+        employeeWhereParams.push(...normalizedDepartmentIds)
+      }
+
       if (normalizedDepartmentNames.length > 0) {
         const placeholders = normalizedDepartmentNames.map(() => "?").join(", ")
         employeeWhereParts.push(

@@ -29,7 +29,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -61,6 +60,7 @@ interface UserItem {
   email: string
   role: string
   roleId?: number | null
+  departmentId?: number | null
   department: string | null
   status: string | null
   lastLogin: string | null
@@ -211,7 +211,7 @@ export function UsersPage() {
     name: "",
     username: "",
     roleId: "",
-    departments: [] as string[],
+    departmentId: "",
   })
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -219,7 +219,7 @@ export function UsersPage() {
     email: "",
     roleId: "",
     password: "123456",
-    departments: [] as string[],
+    departmentId: "",
   })
   const [summary, setSummary] = useState<UsersSummary>({
     totalUsers: 0,
@@ -396,14 +396,24 @@ export function UsersPage() {
       }
     }
 
+    let resolvedDepartmentId = ""
+    if (typeof user.departmentId === "number" && Number.isInteger(user.departmentId)) {
+      resolvedDepartmentId = String(user.departmentId)
+    } else if (user.department) {
+      const matchedDepartment = departments.find(
+        (department) =>
+          normalizeVietnameseText(department.name) === normalizeVietnameseText(String(user.department || ""))
+      )
+      if (matchedDepartment) {
+        resolvedDepartmentId = String(matchedDepartment.id)
+      }
+    }
+
     setEditForm({
       name: user.name || "",
       username: user.username || "",
       roleId: resolvedRoleId,
-      departments: String(user.department || "")
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
+      departmentId: resolvedDepartmentId,
     })
     setIsEditDialogOpen(true)
   }
@@ -416,14 +426,6 @@ export function UsersPage() {
   const isEmployeeRole = (roleId: string) => {
     const roleName = getRoleNameById(roleId)
     return ["nhân viên", "nhan vien", "nhanvien", "employee", "staff"].includes(roleName)
-  }
-
-  const toggleDepartments = (current: string[], departmentName: string) => {
-    if (current.includes(departmentName)) {
-      return current.filter((item) => item !== departmentName)
-    }
-
-    return [...current, departmentName]
   }
 
   const handleUpdateUser = async () => {
@@ -443,7 +445,7 @@ export function UsersPage() {
           name: editForm.name.trim(),
           username: editForm.username.trim(),
           roleId: editForm.roleId ? Number(editForm.roleId) : null,
-          departmentName: editForm.departments.join(", ") || null,
+          departmentId: editForm.departmentId ? Number(editForm.departmentId) : null,
           actorUserId: getActorUserId(),
         }),
       })
@@ -474,7 +476,7 @@ export function UsersPage() {
       return
     }
 
-    if (isEmployeeRole(createForm.roleId) && createForm.departments.length === 0) {
+    if (isEmployeeRole(createForm.roleId) && !createForm.departmentId) {
       alert("Vui lòng chọn khoa/phòng cho vai trò Nhân viên")
       return
     }
@@ -494,7 +496,7 @@ export function UsersPage() {
           roleId: createForm.roleId ? Number(createForm.roleId) : null,
           password: createForm.password.trim() || "123456",
           status: "Hoạt động",
-          departmentName: createForm.departments.join(", ") || null,
+          departmentId: createForm.departmentId ? Number(createForm.departmentId) : null,
           actorUserId: getActorUserId(),
         }),
       })
@@ -512,7 +514,7 @@ export function UsersPage() {
         email: "",
         roleId: "",
         password: "123456",
-        departments: [],
+        departmentId: "",
       })
       await loadUsers()
     } catch {
@@ -991,22 +993,21 @@ export function UsersPage() {
             {isEmployeeRole(editForm.roleId) && (
               <div className="space-y-2">
                 <Label>Chọn khoa/phòng</Label>
-                <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border border-border p-3">
-                  {departments.map((department) => (
-                    <label key={department.id} className="flex items-center gap-2 text-sm text-foreground">
-                      <Checkbox
-                        checked={editForm.departments.includes(department.name)}
-                        onCheckedChange={() =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            departments: toggleDepartments(prev.departments, department.name),
-                          }))
-                        }
-                      />
-                      <span>{department.name}</span>
-                    </label>
-                  ))}
-                </div>
+                <Select
+                  value={editForm.departmentId}
+                  onValueChange={(value) => setEditForm((prev) => ({ ...prev, departmentId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn khoa/phòng" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((department) => (
+                      <SelectItem key={department.id} value={String(department.id)}>
+                        {department.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
@@ -1073,22 +1074,21 @@ export function UsersPage() {
             {isEmployeeRole(createForm.roleId) && (
               <div className="space-y-2">
                 <Label>Chọn khoa/phòng</Label>
-                <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border border-border p-3">
-                  {departments.map((department) => (
-                    <label key={department.id} className="flex items-center gap-2 text-sm text-foreground">
-                      <Checkbox
-                        checked={createForm.departments.includes(department.name)}
-                        onCheckedChange={() =>
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            departments: toggleDepartments(prev.departments, department.name),
-                          }))
-                        }
-                      />
-                      <span>{department.name}</span>
-                    </label>
-                  ))}
-                </div>
+                <Select
+                  value={createForm.departmentId}
+                  onValueChange={(value) => setCreateForm((prev) => ({ ...prev, departmentId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn khoa/phòng" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((department) => (
+                      <SelectItem key={department.id} value={String(department.id)}>
+                        {department.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
