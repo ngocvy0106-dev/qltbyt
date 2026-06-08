@@ -1975,4 +1975,30 @@ router.delete("/:id", async (req, res) => {
   }
 })
 
+// Endpoint to log QR scan activity
+router.post("/:id/log-qr-scan", async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "ID thiết bị không hợp lệ" })
+    }
+
+    const actorUserId = req.body?.userId || req.headers["x-user-id"] || null
+
+    // Call the same logActivity that dashboard counts: action = 'device.qr_scan'
+    await logActivity({
+      userId: actorUserId,
+      action: "device.qr_scan",
+      description: "Quét mã QR thiết bị và thực hiện thao tác",
+      entityType: "device",
+      entityId: id,
+    })
+
+    return res.json({ ok: true, message: "Logged QR scan successfully" })
+  } catch (error) {
+    console.error("Lỗi khi ghi log qr scan:", error)
+    return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
 module.exports = router
