@@ -383,9 +383,13 @@ router.post("/login", async (req, res) => {
     // Record login session (non-blocking)
     recordLoginSession(user.id, req)
 
+    const isMobileApp = parseDeviceName(req.headers["user-agent"]) === "Mobile App"
+    const isEmployee = user.role && user.role.toLowerCase().includes("nhân viên")
+    const actionVal = (isMobileApp && isEmployee) ? "user.login_mobile" : "user.login"
+
     await logActivity({
       userId: user.id,
-      action: "user.login",
+      action: actionVal,
       description: `Đăng nhập: ${String(user.username || user.full_name || "-").trim() || "-"}`,
       entityType: "user",
       entityId: user.id,
