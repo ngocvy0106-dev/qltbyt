@@ -1,0 +1,33 @@
+-- Schema for table repair_requests
+
+CREATE TABLE `repair_requests` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `request_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `device_id` int DEFAULT NULL,
+  `device_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `issue_description` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reporter_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `department_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `priority` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'medium',
+  `status` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `technician_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `assignee_user_id` int DEFAULT NULL,
+  `start_date` datetime DEFAULT NULL,
+  `estimated_end_date` date DEFAULT NULL,
+  `progress_note` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `part_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `vendor_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ordered_date` date DEFAULT NULL,
+  `expected_arrival` date DEFAULT NULL,
+  `cost` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `completed_date` date DEFAULT NULL,
+  `resolution_result` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,
+  KEY `idx_repairs_status` (`status`),
+  KEY `idx_repairs_priority` (`priority`),
+  KEY `idx_repairs_created_at` (`created_at`),
+  KEY `idx_repairs_device_id` (`device_id`),
+  CONSTRAINT `fk_repair_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
