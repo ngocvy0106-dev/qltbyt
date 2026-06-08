@@ -531,4 +531,46 @@ router.post("/change-password", async (req, res) => {
   }
 })
 
+router.post("/admin/reset-password", async (req, res) => {
+  try {
+    const actorRole = String(req.body?.actorRole || req.headers["x-user-role"] || "").trim().toLowerCase()
+    const isAdmin = actorRole.includes("admin") || actorRole.includes("quản trị viên") || actorRole.includes("quan tri vien") || actorRole.includes("administrator")
+    
+    if (!isAdmin) {
+      return res.status(403).json({ message: "Bạn không có quyền thực hiện thao tác này" })
+    }
+
+    const targetUserId = Number(req.body?.targetUserId || 0)
+    const newPassword = String(req.body?.newPassword || "").trim()
+    const actorUserId = Number(req.body?.userId || req.headers["x-user-id"] || 0)
+
+    if (targetUserId <= 0) {
+      return res.status(400).json({ message: "ID người dùng không hợp lệ" })
+    }
+
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ message: "Mật khẩu mới quá ngắn" })
+    }
+
+    const user = await findUserForPasswordChange({ userId: targetUserId })
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy tài khoản để reset" })
+    }
+
+    await updatePasswordForUser({ userId: targetUserId, newPassword })
+
+    await logActivity({
+      userId: actorUserId > 0 ? actorUserId : null,
+      action: "admin.reset_password",
+      description: `Reset mật khẩu cho tài khoản: ${String(user.username || user.full_name || "-").trim()}`,
+      entityType: "user",
+      entityId: targetUserId,
+    })
+
+    return res.json({ ok: true })
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
 module.exports = router
