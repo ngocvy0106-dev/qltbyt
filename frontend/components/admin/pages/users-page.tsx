@@ -139,7 +139,7 @@ function formatUserLogAction(log: UserActivityLogItem) {
   }
 
   if (action === "user.login_mobile") {
-    return "Đăng nhập trên điện thoại"
+    return "Đăng nhập vào ứng dụng di động"
   }
 
   if (action === "user.logout") {
@@ -666,19 +666,19 @@ export function UsersPage() {
               {confirmAction === "resetPassword"
                 ? "Đặt lại mật khẩu?"
                 : confirmAction === "toggleLock"
-                ? isLockedStatus(confirmUser?.status)
-                  ? "Mở khóa tài khoản?"
-                  : "Tạm khóa tài khoản?"
-                : "Xác nhận"}
+                  ? isLockedStatus(confirmUser?.status)
+                    ? "Mở khóa tài khoản?"
+                    : "Tạm khóa tài khoản?"
+                  : "Xác nhận"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmAction === "resetPassword"
                 ? `Đặt lại mật khẩu cho ${confirmUser?.username} về mặc định 123456?`
                 : confirmAction === "toggleLock"
-                ? isLockedStatus(confirmUser?.status)
-                  ? `Mở khóa tài khoản ${confirmUser?.username}?`
-                  : `Tạm khóa tài khoản ${confirmUser?.username}?`
-                : "Bạn có chắc muốn thực hiện thao tác này?"}
+                  ? isLockedStatus(confirmUser?.status)
+                    ? `Mở khóa tài khoản ${confirmUser?.username}?`
+                    : `Tạm khóa tài khoản ${confirmUser?.username}?`
+                  : "Bạn có chắc muốn thực hiện thao tác này?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
