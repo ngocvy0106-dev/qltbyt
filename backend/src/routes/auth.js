@@ -195,6 +195,54 @@ function parseBrowser(userAgent) {
   return "Unknown"
 }
 
+function parseDeviceName(userAgent) {
+  const ua = String(userAgent || "").toLowerCase()
+  if (!ua) return "Unknown"
+  // Mobile devices
+  if (ua.includes("iphone")) return "iPhone"
+  if (ua.includes("ipad")) return "iPad"
+  if (ua.includes("android") && ua.includes("mobile")) return "Android Phone"
+  if (ua.includes("android")) return "Android Tablet"
+  // Detect OS for desktop
+  if (ua.includes("windows")) return "Windows PC"
+  if (ua.includes("macintosh") || ua.includes("mac os")) return "Mac"
+  if (ua.includes("linux")) return "Linux PC"
+  if (ua.includes("dart") || ua.includes("flutter")) return "Mobile App"
+  return "Unknown Device"
+}
+
+async function recordLoginSession(userId, req) {
+  try {
+    const userAgent = req.headers["user-agent"] || ""
+    const ip = getClientIp(req)
+    const browser = parseBrowser(userAgent)
+    const deviceName = parseDeviceName(userAgent)
+
+    // Mark all existing sessions for this user as not current
+    await pool.query(
+      "UPDATE user_login_sessions SET is_current = 0 WHERE user_id = ?",
+      [userId]
+    ).catch(() => {})
+
+    // Resolve location asynchronously (don't block login)
+    let location = null
+    try {
+      location = await resolveLocation(ip)
+    } catch (_) {
+      // ignore
+    }
+
+    await pool.query(
+      `INSERT INTO user_login_sessions
+        (user_id, device_name, browser, location, ip_address, login_at, last_active_at, is_current)
+       VALUES (?, ?, ?, ?, ?, NOW(), NOW(), 1)`,
+      [userId, deviceName, browser, location, ip]
+    )
+  } catch (err) {
+    // Don't fail login just because session recording failed
+    console.warn("[login-session] Failed to record session:", err.message)
+  }
+}
 
 
 router.post("/login", async (req, res) => {
@@ -332,6 +380,9 @@ router.post("/login", async (req, res) => {
 
     await updateLastLogin(user.id)
 
+    // Record login session (non-blocking)
+    recordLoginSession(user.id, req)
+
     await logActivity({
       userId: user.id,
       action: "user.login",
@@ -363,6 +414,14 @@ router.post("/logout", async (req, res) => {
     const userId = Number(req.body?.userId || 0)
     const username = String(req.body?.username || req.body?.fullName || "-").trim() || "-"
 
+    // Mark all sessions of this user as not current
+    if (userId > 0) {
+      await pool.query(
+        "UPDATE user_login_sessions SET is_current = 0 WHERE user_id = ?",
+        [userId]
+      ).catch(() => {})
+    }
+
     await logActivity({
       userId: Number.isInteger(userId) && userId > 0 ? userId : null,
       action: "user.logout",
@@ -370,6 +429,60 @@ router.post("/logout", async (req, res) => {
       entityType: "user",
       entityId: Number.isInteger(userId) && userId > 0 ? userId : null,
     })
+
+    return res.json({ ok: true })
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
+// GET /api/auth/login-sessions?userId=123  — list login sessions for a user
+router.get("/login-sessions", async (req, res) => {
+  try {
+    const userId = Number(req.query?.userId || req.headers["x-user-id"] || 0)
+    if (!userId || userId <= 0) {
+      return res.status(400).json({ message: "Thiếu userId" })
+    }
+
+    const [rows] = await pool.query(
+      `SELECT id, device_name, browser, location, ip_address, login_at, last_active_at, is_current
+       FROM user_login_sessions
+       WHERE user_id = ?
+       ORDER BY is_current DESC, last_active_at DESC
+       LIMIT 20`,
+      [userId]
+    )
+
+    return res.json({ sessions: rows })
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
+// DELETE /api/auth/login-sessions/:id  — revoke a specific session
+router.delete("/login-sessions/:id", async (req, res) => {
+  try {
+    const sessionId = Number(req.params.id || 0)
+    const userId = Number(req.body?.userId || req.headers["x-user-id"] || 0)
+
+    if (!sessionId || sessionId <= 0) {
+      return res.status(400).json({ message: "Session ID không hợp lệ" })
+    }
+
+    // Only allow deleting own sessions
+    const whereClause = userId > 0
+      ? "WHERE id = ? AND user_id = ?"
+      : "WHERE id = ?"
+    const params = userId > 0 ? [sessionId, userId] : [sessionId]
+
+    const [result] = await pool.query(
+      `DELETE FROM user_login_sessions ${whereClause}`,
+      params
+    )
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Không tìm thấy session" })
+    }
 
     return res.json({ ok: true })
   } catch (error) {
