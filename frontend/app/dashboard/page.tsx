@@ -327,14 +327,14 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <Card className="border-border">
                   <CardContent className="p-5">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-base text-muted-foreground">Tổng giá trị tài sản</p>
-                                <p className="mt-3 text-5xl font-bold leading-none text-foreground">
-                                  {hoveredAssetDisplay ? `Tổng giá trị: ${hoveredAssetDisplay}` : summary.assetValue || "--"}
-                                </p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base text-muted-foreground line-clamp-1">Tổng giá trị tài sản</p>
+                        <p className="mt-3 text-3xl xl:text-4xl font-bold leading-tight text-foreground break-words">
+                          {hoveredAssetDisplay ? `Tổng giá trị: ${hoveredAssetDisplay}` : summary.assetValue || "--"}
+                        </p>
                       </div>
-                      <div className="rounded-lg bg-primary/10 p-3">
+                      <div className="rounded-lg bg-primary/10 p-3 flex-shrink-0">
                         <CircleDollarSign className="h-6 w-6 text-primary" />
                       </div>
                     </div>
