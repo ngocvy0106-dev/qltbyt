@@ -138,6 +138,10 @@ function formatUserLogAction(log: UserActivityLogItem) {
     return "Đăng nhập"
   }
 
+  if (action === "user.login_mobile") {
+    return "Đăng nhập trên điện thoại"
+  }
+
   if (action === "user.logout") {
     return "Đăng xuất"
   }
