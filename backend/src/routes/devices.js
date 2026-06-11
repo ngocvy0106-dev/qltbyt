@@ -2001,4 +2001,69 @@ router.post("/:id/log-qr-scan", async (req, res) => {
   }
 })
 
+// ===========================
+// ESP32-CAM: IP Registration & Stream URL
+// Lưu in-memory vì Render.com có ephemeral filesystem.
+// ESP32-CAM sẽ tự đăng ký lại mỗi khi khởi động.
+// ===========================
+
+let _esp32CamConfig = null // { ip, base_url, stream_url, updated_at }
+
+/**
+ * POST /api/devices/esp32cam/ip
+ * ESP32-CAM gọi endpoint này sau khi kết nối WiFi thành công để thông báo IP hiện tại.
+ * Body JSON: { "ip": "192.168.x.x" }
+ */
+router.post("/esp32cam/ip", (req, res) => {
+  const ip = String(req.body?.ip || "").trim()
+
+  if (!ip) {
+    return res.status(400).json({ message: "Thiếu địa chỉ IP trong body request" })
+  }
+
+  // Validate dạng IP đơn giản
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/
+  if (!ipRegex.test(ip)) {
+    return res.status(400).json({ message: `Địa chỉ IP không hợp lệ: ${ip}` })
+  }
+
+  const streamUrl = `http://${ip}:81/stream`
+  const baseUrl = `http://${ip}`
+
+  // Lưu vào bộ nhớ (in-memory)
+  _esp32CamConfig = {
+    ip,
+    base_url: baseUrl,
+    stream_url: streamUrl,
+    updated_at: new Date().toISOString(),
+  }
+
+  console.log(`[ESP32-CAM] Đã cập nhật IP: ${ip} | Stream: ${streamUrl}`)
+  return res.json({ ok: true, ip, stream_url: streamUrl })
+})
+
+/**
+ * GET /api/devices/esp32cam/stream
+ * Flutter gọi endpoint này để lấy stream_url mới nhất của ESP32-CAM.
+ * Trả về: { ok: true, stream_url: "http://...:81/stream", ip: "..." }
+ */
+router.get("/esp32cam/stream", (req, res) => {
+  if (_esp32CamConfig && _esp32CamConfig.stream_url) {
+    return res.json({
+      ok: true,
+      ip: _esp32CamConfig.ip,
+      stream_url: _esp32CamConfig.stream_url,
+      updated_at: _esp32CamConfig.updated_at,
+    })
+  }
+
+  // Chưa có cấu hình (server vừa restart hoặc ESP32-CAM chưa kết nối)
+  return res.json({
+    ok: false,
+    ip: null,
+    stream_url: null,
+    message: "Chưa có cấu hình ESP32-CAM. Hãy khởi động ESP32-CAM và kết nối WiFi.",
+  })
+})
+
 module.exports = router
