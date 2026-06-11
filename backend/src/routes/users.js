@@ -935,7 +935,22 @@ router.delete("/:id", async (req, res) => {
       return res.status(400).json({ message: "ID người dùng không hợp lệ" })
     }
 
-    const [[user]] = await pool.query("SELECT username FROM users WHERE id = ?", [id])
+    // Lấy thông tin user trước khi xóa
+    const [[user]] = await pool.query("SELECT username, role_id FROM users WHERE id = ?", [id])
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng" })
+    }
+
+    // Xóa activity logs liên quan trước (tránh lỗi foreign key constraint)
+    try {
+      await pool.query("DELETE FROM activity WHERE user_id = ?", [id])
+    } catch (activityError) {
+      // Bỏ qua nếu bảng activity không tồn tại
+      if (activityError.code !== "ER_NO_SUCH_TABLE") {
+        throw activityError
+      }
+    }
 
     const [result] = await pool.query("DELETE FROM users WHERE id = ?", [id])
 
@@ -943,16 +958,26 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" })
     }
 
-    await logActivity({
-      userId: actorUserId,
-      action: "user.delete",
-      description: `Tài khoản ${String(user?.username || "-").trim() || "-"}`,
-      entityType: "user",
-      entityId: id,
-    })
+    // Ghi log bởi actorUserId (người thực hiện xóa, không phải user bị xóa)
+    if (actorUserId && actorUserId !== id) {
+      await logActivity({
+        userId: actorUserId,
+        action: "user.delete",
+        description: `Tài khoản ${String(user?.username || "-").trim() || "-"}`,
+        entityType: "user",
+        entityId: id,
+      })
+    }
 
     return res.json({ ok: true })
   } catch (error) {
+    // Xử lý lỗi foreign key rõ ràng hơn
+    if (error.code === "ER_ROW_IS_REFERENCED_2" || error.code === "ER_ROW_IS_REFERENCED") {
+      return res.status(409).json({
+        message: "Không thể xóa người dùng này vì còn dữ liệu liên quan trong hệ thống",
+        detail: String(error.message || error),
+      })
+    }
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
   }
 })
