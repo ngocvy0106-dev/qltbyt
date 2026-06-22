@@ -38,7 +38,7 @@ async function queryDepartmentsWithFallback(whereClause, params) {
        (
          SELECT COUNT(*)
          FROM users u
-         WHERE LOWER(TRIM(u.department_name)) = LOWER(TRIM(dep.name))
+         WHERE (LOWER(TRIM(u.department_name)) = LOWER(TRIM(dep.name)) OR TRIM(CAST(u.department_name AS CHAR)) = TRIM(CAST(dep.id AS CHAR)))
            AND EXISTS (
              SELECT 1
              FROM role r
@@ -84,7 +84,7 @@ async function queryDepartmentsWithFallback(whereClause, params) {
        (
          SELECT COUNT(*)
          FROM users u
-         WHERE LOWER(TRIM(u.department)) = LOWER(TRIM(dep.name))
+         WHERE (LOWER(TRIM(u.department)) = LOWER(TRIM(dep.name)) OR TRIM(CAST(u.department AS CHAR)) = TRIM(CAST(dep.id AS CHAR)))
            AND EXISTS (
              SELECT 1
              FROM role r
@@ -130,7 +130,7 @@ async function queryDepartmentsWithFallback(whereClause, params) {
        (
          SELECT COUNT(*)
          FROM users u
-         WHERE LOWER(TRIM(CAST(u.department_id AS CHAR))) = LOWER(TRIM(dep.name))
+         WHERE (LOWER(TRIM(CAST(u.department_id AS CHAR))) = LOWER(TRIM(dep.name)) OR TRIM(CAST(u.department_id AS CHAR)) = TRIM(CAST(dep.id AS CHAR)))
            AND EXISTS (
              SELECT 1
              FROM role r
