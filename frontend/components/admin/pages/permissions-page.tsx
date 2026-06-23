@@ -242,9 +242,11 @@ export function PermissionsPage() {
     const name = formName.trim()
 
     if (!name) {
-      window.alert("Vui lòng nhập tên vai trò")
+      toast({ description: "Vui lòng nhập tên vai trò", variant: "destructive" })
       return
     }
+
+    const savedPermissions = isAdminRoleName(name) ? allPermissions : formPermissions
 
     try {
       setIsSubmitting(true)
@@ -259,20 +261,50 @@ export function PermissionsPage() {
           body: JSON.stringify({
             name,
             description: formDescription.trim(),
-            permissions: isAdminRoleName(name) ? allPermissions : formPermissions,
+            permissions: savedPermissions,
           }),
         }
       )
 
       if (!response.ok) {
         const errorData = (await response.json().catch(() => ({}))) as { message?: string }
-        window.alert(errorData.message || "Không thể lưu vai trò")
+        toast({ description: errorData.message || "Không thể lưu vai trò", variant: "destructive" })
         return
+      }
+
+      // Optimistic update: update UI immediately without waiting for refreshData
+      if (editingRole) {
+        setRoles((previous) =>
+          previous.map((role) =>
+            role.id === editingRole.id
+              ? {
+                  ...role,
+                  name,
+                  description: formDescription.trim(),
+                  permissions: savedPermissions,
+                }
+              : role
+          )
+        )
+      } else {
+        // For new roles, we need to refresh to get the server-assigned ID
+        await refreshData().catch(() => {})
       }
 
       setIsDialogOpen(false)
       setEditingRole(null)
-      await refreshData()
+      toast({
+        description: editingRole
+          ? `Đã cập nhật vai trò "${name}" thành công`
+          : `Đã thêm vai trò "${name}" thành công`,
+        duration: 3000,
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900 rounded-2xl px-4 py-3 shadow-lg",
+      })
+
+      // Refresh from server in background to sync counts and any server-side changes
+      refreshData().catch(() => {})
+    } catch {
+      toast({ description: "Không thể kết nối server", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
