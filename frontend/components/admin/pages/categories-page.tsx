@@ -11,6 +11,7 @@ interface CategoryItem {
 }
 
 interface LoggedInUser {
+  id?: number | string
   username?: string
   fullName?: string
   role?: string
@@ -116,9 +117,9 @@ export function CategoriesPage() {
             params.set("departmentName", departmentName)
           }
 
-          const userId = Number((loggedInUser as any).id || 0)
-          if (Number.isInteger(userId) && userId > 0) {
-            params.set("userId", String(userId))
+          const userId = String(loggedInUser.id || "").trim()
+          if (userId) {
+            params.set("userId", userId)
           }
 
           const requester = String(loggedInUser.fullName || "").trim()
@@ -173,7 +174,7 @@ export function CategoriesPage() {
     }
 
     loadCategories()
-  }, [apiBaseUrl, isUserHydrated, loggedInUser.role, loggedInUser.departmentName, loggedInUser.fullName, loggedInUser.username])
+  }, [apiBaseUrl, isUserHydrated, loggedInUser.role, loggedInUser.departmentName, loggedInUser.fullName, loggedInUser.username, loggedInUser.id])
 
   return (
     <div className="space-y-6">

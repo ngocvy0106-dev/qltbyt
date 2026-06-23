@@ -68,6 +68,13 @@ interface LoggedInUser {
   role?: string
   departmentName?: string | null
   department?: string | null
+  permissions?: string[]
+}
+
+function hasPermission(permissions: string[] | undefined, permissionName: string, role?: string | null) {
+  if (isAdminRole(role)) return true
+  if (!permissions) return false
+  return permissions.includes(permissionName)
 }
 
 interface DeviceLogItem {
@@ -747,6 +754,11 @@ export function DevicesPage() {
   }
 
   const openEditDialog = (device: DeviceItem) => {
+    if (!hasPermission(loggedInUser.permissions, "Sửa thiết bị", loggedInUser.role)) {
+      alert("Bạn không có quyền sửa thiết bị")
+      return
+    }
+
     setSelectedDevice(device)
     setEditForm({
       name: device.name || "",
@@ -856,8 +868,8 @@ export function DevicesPage() {
   }
 
   const handleDeleteDevice = async (device: DeviceItem) => {
-    if (!isAdminRole(loggedInUser.role)) {
-      alert("Không được phép xóa")
+    if (!hasPermission(loggedInUser.permissions, "Xóa thiết bị", loggedInUser.role)) {
+      alert("Bạn không có quyền xóa thiết bị")
       return
     }
 
@@ -1715,10 +1727,12 @@ export function DevicesPage() {
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>Xuất Excel</Button>
-            <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Thêm thiết bị
-            </Button>
+            {hasPermission(loggedInUser.permissions, "Thêm thiết bị", loggedInUser.role) && (
+              <Button className="gap-2" onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Thêm thiết bị
+              </Button>
+            )}
           </div>
 
           <div className="max-h-[62vh] overflow-x-auto overflow-y-auto bg-card">
@@ -1817,16 +1831,23 @@ export function DevicesPage() {
                               <Eye className="h-4 w-4" />
                               Xem chi tiết
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" onClick={() => openEditDialog(device)}>
-                              <Pencil className="h-4 w-4" />
-                              Chỉnh sửa
-                            </DropdownMenuItem>
+                            {hasPermission(loggedInUser.permissions, "Sửa thiết bị", loggedInUser.role) ? (
+                              <DropdownMenuItem className="gap-2" onClick={() => openEditDialog(device)}>
+                                <Pencil className="h-4 w-4" />
+                                Chỉnh sửa
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem className="gap-2 text-muted-foreground focus:text-muted-foreground" onClick={() => alert("Bạn không có quyền sửa thiết bị")}>
+                                <Pencil className="h-4 w-4" />
+                                Chỉnh sửa (Không có quyền)
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem className="gap-2" onClick={() => handlePrintQr(device)}>
                               <QrCode className="h-4 w-4" />
                               In tem thiết bị
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {isAdminRole(loggedInUser.role) ? (
+                            {hasPermission(loggedInUser.permissions, "Xóa thiết bị", loggedInUser.role) ? (
                               <DropdownMenuItem
                                 className="gap-2 text-destructive focus:text-destructive"
                                 onClick={() => handleRequestDeleteDevice(device)}
@@ -1836,7 +1857,7 @@ export function DevicesPage() {
                               </DropdownMenuItem>
                             ) : (
                               <DropdownMenuItem
-                                className="gap-2 text-destructive focus:text-destructive"
+                                className="gap-2 text-destructive focus:text-destructive opacity-50"
                                 onClick={() => alert("Không được phép xóa")}
                               >
                                 <Trash2 className="h-4 w-4" />
