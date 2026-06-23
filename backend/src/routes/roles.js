@@ -35,29 +35,52 @@ function isAdminRoleName(value) {
   return ["admin", "administrator", "super admin", "quản trị viên", "quan tri vien"].includes(normalized)
 }
 
-async function ensurePermissionsStorage() {
-  const [rows] = await pool.query(
-    `SELECT COLUMN_NAME
-     FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'role'
-       AND COLUMN_NAME IN ('permissions', 'permission')`
-  )
+// Cache to avoid running ALTER TABLE on every request after the first success
+let _permissionsColumnEnsured = false
 
-  if ((rows || []).length > 0) {
+async function ensurePermissionsStorage() {
+  if (_permissionsColumnEnsured) {
     return
   }
 
-  await pool.query(`ALTER TABLE role ADD COLUMN permissions LONGTEXT NULL`)
+  try {
+    // Check if column exists via INFORMATION_SCHEMA
+    const [rows] = await pool.query(
+      `SELECT COLUMN_NAME
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'role'
+         AND COLUMN_NAME IN ('permissions', 'permission')`
+    )
+
+    if ((rows || []).length > 0) {
+      _permissionsColumnEnsured = true
+      return
+    }
+
+    // Column doesn't exist - try to add it
+    await pool.query(`ALTER TABLE \`role\` ADD COLUMN \`permissions\` LONGTEXT NULL`)
+    _permissionsColumnEnsured = true
+  } catch (error) {
+    // If column already exists (duplicate column error), mark as ensured
+    const msg = String(error.message || "")
+    if (
+      error.code === "ER_DUP_FIELDNAME" ||
+      msg.includes("Duplicate column") ||
+      msg.includes("already exists")
+    ) {
+      _permissionsColumnEnsured = true
+      return
+    }
+    // Log other errors but don't crash - the query fallback variants will handle missing column
+    console.error("[roles] ensurePermissionsStorage error:", error.message || error)
+  }
 }
 
 router.get("/counts", async (_, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT COALESCE(r.role_name, 'User') AS roleName, COUNT(u.id) AS userCount
-       FROM users u
-       LEFT JOIN \`role\` r ON u.role_id = r.id
-       GROUP BY roleName`
+      "SELECT COALESCE(r.role_name, 'User') AS roleName, COUNT(u.id) AS userCount FROM users u LEFT JOIN `role` r ON u.role_id = r.id GROUP BY roleName"
     )
 
     return res.json({
@@ -75,24 +98,30 @@ router.get("/", async (_, res) => {
   try {
     await ensurePermissionsStorage()
 
+    // Query variants ordered from most complete to least, with backticks on reserved keyword `role`
+    // Also includes variants WITHOUT description column for databases that may be missing it
     const queryVariants = [
-      `SELECT id, role_name, description, permissions FROM role ORDER BY id ASC`,
-      `SELECT id, role_name, description, permission AS permissions FROM role ORDER BY id ASC`,
-      `SELECT id, role_name, description FROM role ORDER BY id ASC`,
-      `SELECT id, role_name FROM role ORDER BY id ASC`,
+      "SELECT id, role_name, description, permissions FROM `role` ORDER BY id ASC",
+      "SELECT id, role_name, permissions FROM `role` ORDER BY id ASC",
+      "SELECT id, role_name, description, permission AS permissions FROM `role` ORDER BY id ASC",
+      "SELECT id, role_name, permission AS permissions FROM `role` ORDER BY id ASC",
+      "SELECT id, role_name, description FROM `role` ORDER BY id ASC",
+      "SELECT id, role_name FROM `role` ORDER BY id ASC",
     ]
 
     let rows = []
     let lastError = null
+    let usedQuery = ""
 
     for (const query of queryVariants) {
       try {
         const [result] = await pool.query(query)
         rows = result
         lastError = null
+        usedQuery = query
         break
       } catch (error) {
-        if (error.code === "ER_BAD_FIELD_ERROR") {
+        if (error.code === "ER_BAD_FIELD_ERROR" || String(error.message || "").includes("Unknown column")) {
           lastError = error
           continue
         }
@@ -105,6 +134,8 @@ router.get("/", async (_, res) => {
       throw lastError
     }
 
+    console.log(`[roles GET] succeeded with query: ${usedQuery.slice(0, 60)}...`)
+
     return res.json({
       roles: rows.map((row) => ({
         id: row.id,
@@ -114,6 +145,7 @@ router.get("/", async (_, res) => {
       })),
     })
   } catch (error) {
+    console.error("[roles GET] error:", error.message || error)
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
   }
 })
@@ -136,15 +168,19 @@ router.post("/", async (req, res) => {
     const permissionsJson = JSON.stringify(permissions)
 
     const queryVariants = [
-      `INSERT INTO role (role_name, description, permissions) VALUES (?, ?, ?)`,
-      `INSERT INTO role (role_name, description, permission) VALUES (?, ?, ?)`,
-      `INSERT INTO role (role_name, description) VALUES (?, ?)`,
-      `INSERT INTO role (role_name) VALUES (?)`,
+      "INSERT INTO `role` (role_name, description, permissions) VALUES (?, ?, ?)",
+      "INSERT INTO `role` (role_name, permissions) VALUES (?, ?)",
+      "INSERT INTO `role` (role_name, description, permission) VALUES (?, ?, ?)",
+      "INSERT INTO `role` (role_name, permission) VALUES (?, ?)",
+      "INSERT INTO `role` (role_name, description) VALUES (?, ?)",
+      "INSERT INTO `role` (role_name) VALUES (?)",
     ]
 
     const queryParams = [
       [name, description || null, permissionsJson],
+      [name, permissionsJson],
       [name, description || null, permissionsJson],
+      [name, permissionsJson],
       [name, description || null],
       [name],
     ]
@@ -159,7 +195,7 @@ router.post("/", async (req, res) => {
         lastError = null
         break
       } catch (error) {
-        if (error.code === "ER_BAD_FIELD_ERROR") {
+        if (error.code === "ER_BAD_FIELD_ERROR" || String(error.message || "").includes("Unknown column")) {
           lastError = error
           continue
         }
@@ -178,6 +214,7 @@ router.post("/", async (req, res) => {
 
     return res.json({ ok: true, id: insertId })
   } catch (error) {
+    console.error("[roles POST] error:", error.message || error)
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
   }
 })
@@ -205,30 +242,36 @@ router.put("/:id", async (req, res) => {
     const permissionsJson = JSON.stringify(permissions)
 
     const queryVariants = [
-      `UPDATE role SET role_name = ?, description = ?, permissions = ? WHERE id = ?`,
-      `UPDATE role SET role_name = ?, description = ?, permission = ? WHERE id = ?`,
-      `UPDATE role SET role_name = ?, description = ? WHERE id = ?`,
-      `UPDATE role SET role_name = ? WHERE id = ?`,
+      "UPDATE `role` SET role_name = ?, description = ?, permissions = ? WHERE id = ?",
+      "UPDATE `role` SET role_name = ?, permissions = ? WHERE id = ?",
+      "UPDATE `role` SET role_name = ?, description = ?, permission = ? WHERE id = ?",
+      "UPDATE `role` SET role_name = ?, permission = ? WHERE id = ?",
+      "UPDATE `role` SET role_name = ?, description = ? WHERE id = ?",
+      "UPDATE `role` SET role_name = ? WHERE id = ?",
     ]
 
     const queryParams = [
       [name, description || null, permissionsJson, id],
+      [name, permissionsJson, id],
       [name, description || null, permissionsJson, id],
+      [name, permissionsJson, id],
       [name, description || null, id],
       [name, id],
     ]
 
     let result = null
     let lastError = null
+    let usedPutQuery = ""
 
     for (let index = 0; index < queryVariants.length; index += 1) {
       try {
         const [queryResult] = await pool.query(queryVariants[index], queryParams[index])
         result = queryResult
         lastError = null
+        usedPutQuery = queryVariants[index]
         break
       } catch (error) {
-        if (error.code === "ER_BAD_FIELD_ERROR") {
+        if (error.code === "ER_BAD_FIELD_ERROR" || String(error.message || "").includes("Unknown column")) {
           lastError = error
           continue
         }
@@ -249,8 +292,10 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy vai trò" })
     }
 
+    console.log(`[roles PUT] id=${id} succeeded with: ${usedPutQuery.slice(0, 60)}... permissions=${permissionsJson.slice(0, 50)}`)
     return res.json({ ok: true })
   } catch (error) {
+    console.error("[roles PUT] error:", error.message || error)
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
   }
 })
@@ -263,7 +308,7 @@ router.delete("/:id", async (req, res) => {
     }
 
     try {
-      const [result] = await pool.query("DELETE FROM role WHERE id = ?", [id])
+      const [result] = await pool.query("DELETE FROM `role` WHERE id = ?", [id])
 
       if (!result.affectedRows) {
         return res.status(404).json({ message: "Không tìm thấy vai trò" })
