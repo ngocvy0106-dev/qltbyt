@@ -115,14 +115,12 @@ export function isPathAllowedForRole(
   permissions?: string[] | null
 ) {
   const appRole = resolveAppRole(roleValue)
-  const hasProvidedPermissions = Array.isArray(permissions)
   const permissionPaths = resolveAllowedPathsByPermissions(permissions)
   const rolePaths = roleAllowedPaths[appRole] || []
-  
-  // Bug fix: do not fall back to rolePaths if hasProvidedPermissions is true (even if empty)
-  const allowedPaths = hasProvidedPermissions
-    ? permissionPaths
-    : rolePaths
+
+  // Use permissionPaths when permissions are explicitly set AND non-empty.
+  // Fall back to rolePaths if permissions is null/undefined/empty (e.g. Admin before sync).
+  const allowedPaths = permissionPaths.length > 0 ? permissionPaths : rolePaths
 
   if (pathname === "/") {
     return false
@@ -135,4 +133,30 @@ export function isPathAllowedForRole(
 
     return pathname.startsWith(`${allowedPath}/`)
   })
+}
+
+// Returns true only when the role is non-admin AND permissions are explicitly
+// set to a non-empty list that does NOT include the given path.
+// Used by the sidebar to decide whether to HIDE an item entirely.
+export function isPathExplicitlyForbidden(
+  pathname: string,
+  roleValue: string | null | undefined,
+  permissions?: string[] | null
+) {
+  const appRole = resolveAppRole(roleValue)
+  // Admin always sees everything regardless of permissions
+  if (appRole === "admin") {
+    return false
+  }
+
+  const permissionPaths = resolveAllowedPathsByPermissions(permissions)
+
+  // Only hide when permissions are explicitly non-empty and the path is not in them
+  if (!Array.isArray(permissions) || permissionPaths.length === 0) {
+    return false
+  }
+
+  return !permissionPaths.some(
+    (allowedPath) => pathname === allowedPath || pathname.startsWith(`${allowedPath}/`)
+  )
 }

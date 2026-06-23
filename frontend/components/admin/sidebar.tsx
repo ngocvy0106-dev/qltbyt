@@ -17,7 +17,7 @@ import {
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
-import { getDefaultPathByRole, isPathAllowedForRole } from "@/lib/role-access"
+import { getDefaultPathByRole, isPathAllowedForRole, isPathExplicitlyForbidden } from "@/lib/role-access"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -519,7 +519,7 @@ export function Sidebar() {
         .map((section) => ({
           ...section,
           items: section.items.filter((item) =>
-            isPathAllowedForRole(item.href, loggedInUser.role, loggedInUser.permissions)
+            !isPathExplicitlyForbidden(item.href, loggedInUser.role, loggedInUser.permissions)
           ),
         }))
         .filter((section) => section.items.length > 0)
