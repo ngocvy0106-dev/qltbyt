@@ -51,6 +51,26 @@ async function ensurePermissionsStorage() {
   await pool.query(`ALTER TABLE role ADD COLUMN permissions LONGTEXT NULL`)
 }
 
+router.get("/counts", async (_, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT COALESCE(r.role_name, 'User') AS roleName, COUNT(u.id) AS userCount
+       FROM users u
+       LEFT JOIN \`role\` r ON u.role_id = r.id
+       GROUP BY roleName`
+    )
+
+    return res.json({
+      roles: rows.map((row) => ({
+        roleName: row.roleName,
+        userCount: Number(row.userCount || 0),
+      })),
+    })
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
 router.get("/", async (_, res) => {
   try {
     await ensurePermissionsStorage()
@@ -257,26 +277,6 @@ router.delete("/:id", async (req, res) => {
 
       throw error
     }
-  } catch (error) {
-    return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
-  }
-})
-
-router.get("/counts", async (_, res) => {
-  try {
-    const [rows] = await pool.query(
-      `SELECT COALESCE(r.role_name, 'User') AS roleName, COUNT(u.id) AS userCount
-       FROM users u
-       LEFT JOIN \`role\` r ON u.role_id = r.id
-       GROUP BY roleName`
-    )
-
-    return res.json({
-      roles: rows.map((row) => ({
-        roleName: row.roleName,
-        userCount: Number(row.userCount || 0),
-      })),
-    })
   } catch (error) {
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
   }
