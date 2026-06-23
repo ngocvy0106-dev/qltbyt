@@ -136,8 +136,9 @@ export function isPathAllowedForRole(
 }
 
 // Returns true only when the role is non-admin AND permissions are explicitly
-// set to a non-empty list that does NOT include the given path.
-// Used by the sidebar to decide whether to HIDE an item entirely.
+// set to a list that does NOT include the given path.
+// null/undefined = not yet loaded → do NOT hide (return false)
+// [] = explicitly no permissions → hide everything for non-admin (return true)
 export function isPathExplicitlyForbidden(
   pathname: string,
   roleValue: string | null | undefined,
@@ -149,11 +150,16 @@ export function isPathExplicitlyForbidden(
     return false
   }
 
+  // permissions not loaded yet → don't hide
+  if (!Array.isArray(permissions)) {
+    return false
+  }
+
   const permissionPaths = resolveAllowedPathsByPermissions(permissions)
 
-  // Only hide when permissions are explicitly non-empty and the path is not in them
-  if (!Array.isArray(permissions) || permissionPaths.length === 0) {
-    return false
+  // Explicitly empty permissions = no access → hide all paths
+  if (permissionPaths.length === 0) {
+    return true
   }
 
   return !permissionPaths.some(

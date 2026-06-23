@@ -408,6 +408,8 @@ export function PermissionsPage() {
                 <div className="flex flex-wrap gap-2">
                   {role.fullAccess ? (
                     <Badge className="bg-destructive/20 text-destructive">Toàn quyền</Badge>
+                  ) : role.permissions.length === 0 ? (
+                    <span className="text-sm text-muted-foreground italic">Chưa có quyền nào</span>
                   ) : (
                     role.permissions.map((permission, index) => (
                       <Badge key={`${role.id}-${permission}-${index}`} variant="secondary" className="text-sm">
