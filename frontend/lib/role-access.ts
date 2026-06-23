@@ -118,10 +118,10 @@ export function isPathAllowedForRole(
   const hasProvidedPermissions = Array.isArray(permissions)
   const permissionPaths = resolveAllowedPathsByPermissions(permissions)
   const rolePaths = roleAllowedPaths[appRole] || []
+  
+  // Bug fix: do not fall back to rolePaths if hasProvidedPermissions is true (even if empty)
   const allowedPaths = hasProvidedPermissions
-    ? permissionPaths.length > 0
-      ? permissionPaths
-      : rolePaths
+    ? permissionPaths
     : rolePaths
 
   if (pathname === "/") {

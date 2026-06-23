@@ -514,7 +514,16 @@ export function Sidebar() {
     }
   }, [])
 
-  const displayedMenuSections = menuSections
+  const displayedMenuSections = isUserHydrated && !!String(loggedInUser.role || "").trim()
+    ? menuSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) =>
+            isPathAllowedForRole(item.href, loggedInUser.role, loggedInUser.permissions)
+          ),
+        }))
+        .filter((section) => section.items.length > 0)
+    : menuSections
 
   const prefetchRoute = (href: string) => {
     try {
