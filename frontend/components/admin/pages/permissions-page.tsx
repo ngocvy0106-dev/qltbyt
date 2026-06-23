@@ -301,8 +301,10 @@ export function PermissionsPage() {
         className: "border-emerald-200 bg-emerald-50 text-emerald-900 rounded-2xl px-4 py-3 shadow-lg",
       })
 
-      // Refresh from server in background to sync counts and any server-side changes
-      refreshData().catch(() => {})
+      // Delay refresh to allow TiDB Cloud to propagate the write before reading back
+      setTimeout(() => {
+        refreshData().catch(() => {})
+      }, 1500)
     } catch {
       toast({ description: "Không thể kết nối server", variant: "destructive" })
     } finally {
