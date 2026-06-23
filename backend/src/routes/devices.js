@@ -1984,12 +1984,21 @@ router.post("/:id/log-qr-scan", async (req, res) => {
     }
 
     const actorUserId = req.body?.userId || req.headers["x-user-id"] || null
+    const actionName = String(req.body?.actionName || "").trim()
+
+    // Lấy tên thiết bị
+    const [deviceRows] = await pool.query("SELECT device_name FROM devices WHERE id = ?", [id])
+    const deviceName = deviceRows[0]?.device_name || "Thiết bị"
+
+    const description = actionName
+      ? `Quét mã QR ${actionName.toLowerCase()} thiết bị "${deviceName}"`
+      : `Quét mã QR thiết bị "${deviceName}" và thực hiện thao tác`
 
     // Call the same logActivity that dashboard counts: action = 'device.qr_scan'
     await logActivity({
       userId: actorUserId,
       action: "device.qr_scan",
-      description: "Quét mã QR thiết bị và thực hiện thao tác",
+      description: description,
       entityType: "device",
       entityId: id,
     })

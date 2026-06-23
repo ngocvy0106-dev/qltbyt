@@ -576,6 +576,24 @@ async function getRecentActivitiesFromDb() {
           }
         }
 
+        if (action === "device.qr_scan") {
+          const shortTime = item.created_at ? formatDateTime(item.created_at) : ""
+          let actionType = "Quét mã QR"
+          const match = entityName.match(/Quét mã QR (.+?) thiết bị/i)
+          if (match && match[1]) {
+             actionType = match[1]
+             actionType = actionType.charAt(0).toUpperCase() + actionType.slice(1)
+          }
+          
+          return {
+             title: actionType,
+             desc: shortTime 
+               ? `${roleName} [${fullName}] - ${entityName} - ${shortTime}`
+               : `${roleName} [${fullName}] - ${entityName}`
+          }
+        }
+
+
         // If the activity description already embeds a "Role [FullName] - ..." prefix
         // (e.g. from device.import_batch or our detailed device.delete description),
         // avoid adding the action prefix again which causes duplication.
