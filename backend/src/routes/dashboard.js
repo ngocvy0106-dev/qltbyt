@@ -399,9 +399,29 @@ async function getRecentActivitiesFromDb() {
 
       const seenTransferIds = new Set()
 
-      return rows
-        .filter((item) => !excludedActions.has(String(item.action_name || "").trim()))
-        .map((item) => {
+      const filteredRows = rows.filter((item, index, array) => {
+        if (excludedActions.has(String(item.action_name || "").trim())) return false;
+        
+        const action = String(item.action_name || "").trim();
+        const qrRelatedActions = ['transfer.create', 'transfer.approved', 'maintenance.create', 'repair.create', 'device.update'];
+        
+        if (qrRelatedActions.includes(action)) {
+           for (let i = Math.max(0, index - 10); i <= Math.min(array.length - 1, index + 10); i++) {
+              if (i !== index) {
+                 const other = array[i];
+                 if (String(other.action_name || "").trim() === "device.qr_scan" && other.full_name === item.full_name) {
+                    const timeDiff = Math.abs(new Date(item.created_at).getTime() - new Date(other.created_at).getTime());
+                    if (timeDiff <= 5000) {
+                       return false;
+                    }
+                 }
+              }
+           }
+        }
+        return true;
+      });
+
+      return filteredRows.map((item) => {
         const action = String(item.action_name || "").trim() || "activity"
         const entityName = String(item.description || "").trim() || "Không có mô tả"
         const createdText = item.created_at ? formatDateTime(item.created_at) : ""
@@ -578,15 +598,9 @@ async function getRecentActivitiesFromDb() {
 
         if (action === "device.qr_scan") {
           const shortTime = item.created_at ? formatDateTime(item.created_at) : ""
-          let actionType = "Quét mã QR"
-          const match = entityName.match(/Quét mã QR (.+?) thiết bị/i)
-          if (match && match[1]) {
-             actionType = match[1]
-             actionType = actionType.charAt(0).toUpperCase() + actionType.slice(1)
-          }
           
           return {
-             title: actionType,
+             title: "Quét mã QR",
              desc: shortTime 
                ? `${roleName} [${fullName}] - ${entityName} - ${shortTime}`
                : `${roleName} [${fullName}] - ${entityName}`

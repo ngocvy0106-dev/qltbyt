@@ -1991,7 +1991,7 @@ router.post("/:id/log-qr-scan", async (req, res) => {
     const deviceName = deviceRows[0]?.device_name || "Thiết bị"
 
     const description = actionName
-      ? `Quét mã QR ${actionName.toLowerCase()} thiết bị "${deviceName}"`
+      ? `Quét mã QR thiết bị "${deviceName}" và thực hiện ${actionName}`
       : `Quét mã QR thiết bị "${deviceName}" và thực hiện thao tác`
 
     // Call the same logActivity that dashboard counts: action = 'device.qr_scan'
