@@ -414,15 +414,26 @@ async function getRecentActivitiesFromDb() {
                  if (String(other.action_name || "").trim() === "device.qr_scan" && other.full_name === item.full_name) {
                     const timeDiff = Math.abs(new Date(item.created_at).getTime() - new Date(other.created_at).getTime());
                     if (timeDiff <= 5000) {
-                       const actionLabelMap = {
-                         "device.update": "Cập nhật",
-                         "transfer.create": "Điều chuyển",
-                         "transfer.approved": "Cấp phát",
-                         "maintenance.create": "Tạo lịch bảo trì",
-                         "repair.create": "Tạo lịch sửa chữa"
-                       };
+                       let actionLabel = "thao tác";
+                       if (action.startsWith("transfer.")) {
+                           const transferId = Number(item.entity_id || 0);
+                           const transferMeta = Number.isInteger(transferId) && transferId > 0 ? transferMetaMap.get(transferId) : null;
+                           let transferType = "transfer";
+                           if (transferMeta) {
+                               transferType = extractActionTypeFromRequest(transferMeta.requestCode, transferMeta.reason);
+                           }
+                           actionLabel = transferType === "allocation" ? "Cấp phát" : "Điều chuyển";
+                       } else {
+                           const actionLabelMap = {
+                               "device.update": "Cập nhật",
+                               "maintenance.create": "Tạo lịch bảo trì",
+                               "repair.create": "Tạo lịch sửa chữa"
+                           };
+                           actionLabel = actionLabelMap[action] || "thao tác";
+                       }
+
                        if (!qrScanActionMap.has(other.id)) {
-                          qrScanActionMap.set(other.id, actionLabelMap[action] || "thao tác");
+                          qrScanActionMap.set(other.id, actionLabel);
                        }
                        return false;
                     }
