@@ -420,7 +420,7 @@ async function getRecentActivitiesFromDb() {
                            const transferMeta = Number.isInteger(transferId) && transferId > 0 ? transferMetaMap.get(transferId) : null;
                            let transferType = "transfer";
                            if (transferMeta) {
-                               transferType = extractActionTypeFromRequest(transferMeta.requestCode, transferMeta.reason);
+                               transferType = resolveRequestType(transferMeta.reason, transferMeta.requestCode);
                            }
                            actionLabel = transferType === "allocation" ? "Cấp phát" : "Điều chuyển";
                        } else {
