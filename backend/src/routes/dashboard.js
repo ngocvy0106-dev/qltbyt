@@ -399,6 +399,8 @@ async function getRecentActivitiesFromDb() {
 
       const seenTransferIds = new Set()
 
+      const qrScanActionMap = new Map();
+
       const filteredRows = rows.filter((item, index, array) => {
         if (excludedActions.has(String(item.action_name || "").trim())) return false;
         
@@ -412,6 +414,14 @@ async function getRecentActivitiesFromDb() {
                  if (String(other.action_name || "").trim() === "device.qr_scan" && other.full_name === item.full_name) {
                     const timeDiff = Math.abs(new Date(item.created_at).getTime() - new Date(other.created_at).getTime());
                     if (timeDiff <= 5000) {
+                       const actionLabelMap = {
+                         "device.update": "Cập nhật",
+                         "transfer.create": "Điều chuyển",
+                         "transfer.approved": "Cấp phát",
+                         "maintenance.create": "Tạo lịch bảo trì",
+                         "repair.create": "Tạo lịch sửa chữa"
+                       };
+                       qrScanActionMap.set(other.id, actionLabelMap[action] || "thao tác");
                        return false;
                     }
                  }
@@ -423,7 +433,14 @@ async function getRecentActivitiesFromDb() {
 
       return filteredRows.map((item) => {
         const action = String(item.action_name || "").trim() || "activity"
-        const entityName = String(item.description || "").trim() || "Không có mô tả"
+        let entityName = String(item.description || "").trim() || "Không có mô tả"
+        
+        if (action === "device.qr_scan" && qrScanActionMap.has(item.id)) {
+           const specificAction = qrScanActionMap.get(item.id);
+           if (entityName.endsWith("và thực hiện thao tác")) {
+              entityName = entityName.replace("thao tác", specificAction);
+           }
+        }
         const createdText = item.created_at ? formatDateTime(item.created_at) : ""
         const fullName = String(item.full_name || "Hệ thống").trim()
         const roleName = String(item.role_name || "Admin").trim()
