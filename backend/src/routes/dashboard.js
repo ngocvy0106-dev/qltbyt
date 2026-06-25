@@ -421,7 +421,9 @@ async function getRecentActivitiesFromDb() {
                          "maintenance.create": "Tạo lịch bảo trì",
                          "repair.create": "Tạo lịch sửa chữa"
                        };
-                       qrScanActionMap.set(other.id, actionLabelMap[action] || "thao tác");
+                       if (!qrScanActionMap.has(other.id)) {
+                          qrScanActionMap.set(other.id, actionLabelMap[action] || "thao tác");
+                       }
                        return false;
                     }
                  }
