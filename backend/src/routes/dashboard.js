@@ -405,7 +405,7 @@ async function getRecentActivitiesFromDb() {
         if (excludedActions.has(String(item.action_name || "").trim())) return false;
         
         const action = String(item.action_name || "").trim();
-        const qrRelatedActions = ['transfer.create', 'transfer.approved', 'maintenance.create', 'repair.create', 'device.update'];
+        const qrRelatedActions = ['transfer.create', 'transfer.approved', 'maintenance.create', 'repair.create', 'repair.assign', 'device.update'];
         
         if (qrRelatedActions.includes(action)) {
            for (let i = Math.max(0, index - 10); i <= Math.min(array.length - 1, index + 10); i++) {
@@ -427,7 +427,8 @@ async function getRecentActivitiesFromDb() {
                            const actionLabelMap = {
                                "device.update": "Cập nhật",
                                "maintenance.create": "Tạo lịch bảo trì",
-                               "repair.create": "Tạo lịch sửa chữa"
+                               "repair.create": "Tạo yêu cầu sửa chữa",
+                               "repair.assign": "Tạo yêu cầu sửa chữa"
                            };
                            actionLabel = actionLabelMap[action] || "thao tác";
                        }
