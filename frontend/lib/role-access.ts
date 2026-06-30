@@ -55,22 +55,32 @@ const permissionAllowedPaths: Record<string, string[]> = {
   "them thiet bi": ["/devices"],
   "sua thiet bi": ["/devices"],
   "xoa thiet bi": ["/devices"],
-  "xem lich bao tri": ["/maintenance"],
-  "tao lich bao tri": ["/maintenance"],
+
+  "xem dieu chuyen": ["/transfers"],
+  "tao yeu cau dieu chuyen": ["/transfers"],
+  "duyet dieu chuyen": ["/transfers"],
+
+  "xem bao tri": ["/maintenance"],
+  "tao yeu cau bao tri": ["/maintenance"],
   "cap nhat bao tri": ["/maintenance"],
-  "quan ly bao tri": ["/maintenance"],
+  "duyet bao tri": ["/maintenance"],
+
+  "xem sua chua": ["/repairs"],
+  "tao yeu cau sua chua": ["/repairs"],
+  "cap nhat sua chua": ["/repairs"],
+  "duyet sua chua": ["/repairs"],
+
+  "xem phong/khoa": ["/departments"],
+  "quan ly phong/khoa": ["/departments"],
+
   "xem bao cao": ["/reports"],
   "xuat bao cao": ["/reports"],
   "tao bao cao": ["/reports"],
-  "xem phong/khoa": ["/departments"],
-  "quan ly phong/khoa": ["/departments"],
+
   "quan ly nguoi dung": ["/users"],
   "quan ly phan quyen": ["/permissions"],
   "xem nhat ky": ["/reports"],
   "sao luu du lieu": ["/reports"],
-  "tao yeu cau bao tri": ["/maintenance"],
-  "tao yeu cau dieu chuyen": ["/transfers"],
-  "tao yeu cau sua chua": ["/repairs"],
 }
 
 function resolveAllowedPathsByPermissions(permissions?: string[] | null) {
