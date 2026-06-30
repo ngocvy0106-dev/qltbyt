@@ -768,15 +768,27 @@ router.get("/overview", async (_, res) => {
       }
     }
 
-    // Get QR scan count for today (if activity table/action exists)
+    // Get QR scan count for today (in Vietnam timezone)
     let qrScanCountToday = 0
     try {
       const [scanRows] = await pool.query(
-        "SELECT COUNT(*) as count FROM activity WHERE `action` = 'device.qr_scan' AND DATE(created_at) = CURDATE()"
+        "SELECT created_at FROM activity WHERE `action` = 'device.qr_scan' AND created_at >= DATE_SUB(NOW(), INTERVAL 2 DAY)"
       )
-      qrScanCountToday = scanRows[0]?.count || 0
+      
+      const todayParts = getVnDateParts(new Date())
+      if (todayParts) {
+        const todayStr = `${todayParts.day}/${todayParts.month}/${todayParts.year}`
+        
+        qrScanCountToday = scanRows.filter(row => {
+          if (!row.created_at) return false
+          const rowParts = getVnDateParts(row.created_at)
+          if (!rowParts) return false
+          const rowStr = `${rowParts.day}/${rowParts.month}/${rowParts.year}`
+          return rowStr === todayStr
+        }).length
+      }
     } catch (error) {
-      if (error.code !== "ER_NO_SUCH_TABLE") {
+      if (error.code !== "ER_NO_SUCH_TABLE" && error.code !== "ER_BAD_FIELD_ERROR") {
         throw error
       }
     }
