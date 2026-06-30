@@ -480,6 +480,7 @@ async function getRecentActivitiesFromDb() {
           "repair.start": "Bắt đầu Sửa chữa",
           "repair.complete": "Hoàn thành Sửa chữa",
           "device.import_batch": "Nhập Thiết bị từ CSV",
+          "device.liquidation": "Thanh lý thiết bị",
           "department.create": "Thêm Khoa/Phòng Ban",
           "department.update": "Cập nhật Khoa/Phòng Ban",
           "department.delete": "Xóa Khoa/Phòng Ban",
@@ -632,6 +633,17 @@ async function getRecentActivitiesFromDb() {
           
           return {
              title: "Quét mã QR",
+             desc: shortTime 
+               ? `${roleName} [${fullName}] - ${entityName} - ${shortTime}`
+               : `${roleName} [${fullName}] - ${entityName}`
+          }
+        }
+
+        if (action === "device.liquidation") {
+          const shortTime = item.created_at ? formatDateTime(item.created_at) : ""
+          
+          return {
+             title: "Thanh lý thiết bị",
              desc: shortTime 
                ? `${roleName} [${fullName}] - ${entityName} - ${shortTime}`
                : `${roleName} [${fullName}] - ${entityName}`

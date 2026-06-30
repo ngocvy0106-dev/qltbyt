@@ -635,9 +635,10 @@ const rows = await safeQueryVariants([
     `SELECT d.category, COALESCE(dep.name, 'Chưa phân khoa') AS department_name, COUNT(*) AS total
      FROM devices d
      LEFT JOIN departments dep ON d.department_id = dep.id
+     WHERE d.status NOT IN ('inactive', 'thanh_ly', 'da thanh ly', 'liquidated', 'disposed')
      GROUP BY d.category, COALESCE(dep.name, 'Chưa phân khoa')
      ORDER BY total DESC`,
-    `SELECT category, COUNT(*) AS total FROM devices GROUP BY category ORDER BY total DESC`,
+    `SELECT category, COUNT(*) AS total FROM devices WHERE status NOT IN ('inactive', 'thanh_ly', 'da thanh ly', 'liquidated', 'disposed') GROUP BY category ORDER BY total DESC`,
   ])
 
   let scopedRows = scope?.isEmployee ? rows : rows
@@ -648,8 +649,8 @@ const rows = await safeQueryVariants([
     
     // Get device IDs with their categories
     const deviceWithCategoriesRows = await safeQueryVariants([
-      `SELECT d.id, d.category FROM devices d WHERE d.id IN (${Array.from(visibleDeviceIds).join(',')})`,
-      `SELECT id, category FROM devices WHERE id IN (${Array.from(visibleDeviceIds).join(',')})`,
+      `SELECT d.id, d.category FROM devices d WHERE d.id IN (${Array.from(visibleDeviceIds).join(',')}) AND d.status NOT IN ('inactive', 'thanh_ly', 'da thanh ly', 'liquidated', 'disposed')`,
+      `SELECT id, category FROM devices WHERE id IN (${Array.from(visibleDeviceIds).join(',')}) AND status NOT IN ('inactive', 'thanh_ly', 'da thanh ly', 'liquidated', 'disposed')`,
     ])
     
     const categoryCount = new Map()
@@ -696,6 +697,26 @@ const rows = await safeQueryVariants([
     value: Math.round((toSafeNumber(row.total) / total) * 100),
     color: colors[index % colors.length],
   }))
+}
+
+async function loadLiquidatedSummaryData(scope = {}) {
+  const query = `
+    SELECT COUNT(*) as quantity, SUM(liquidation_value) as totalValue
+    FROM devices
+    WHERE status IN ('inactive', 'thanh ly', 'da thanh ly', 'liquidated', 'disposed', 'thanh_ly')
+  `
+  try {
+    const [rows] = await pool.query(query)
+    if (rows && rows.length > 0) {
+      return {
+        quantity: Number(rows[0].quantity) || 0,
+        totalValue: Number(rows[0].totalValue) || 0,
+      }
+    }
+  } catch (error) {
+    console.error("Error loading liquidated summary:", error)
+  }
+  return { quantity: 0, totalValue: 0 }
 }
 
 async function loadInventorySummaryData(dateRange = null, scope = {}) {
@@ -823,6 +844,17 @@ async function loadInventorySummaryData(dateRange = null, scope = {}) {
     const grouped = new Map()
 
     finalRows.forEach((row) => {
+    const rawStatus = String(row.status || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+
+    if (["inactive", "thanh ly", "da thanh ly", "liquidated", "disposed"].includes(rawStatus)) {
+      return
+    }
+
     const deviceName = String(row.device_name || "Thiết bị chưa đặt tên").trim() || "Thiết bị chưa đặt tên"
     const manufacturer = String(row.manufacturer || "-").trim() || "-"
     const key = `${deviceName}__${manufacturer}`
@@ -1529,7 +1561,7 @@ async function loadDeviceStockMovementsData(scope = {}) {
 }
 
 async function loadDashboardData(dateRange = null, scope = {}) {
-  const [metrics, reports, maintenanceSummary, deviceCategoryShare, inventorySummary, costByMonth, maintenanceTrend, deviceLogs, deviceStockMovements] = await Promise.all([
+  const [metrics, reports, maintenanceSummary, deviceCategoryShare, inventorySummary, costByMonth, maintenanceTrend, deviceLogs, deviceStockMovements, liquidatedSummary] = await Promise.all([
     loadMetricData(scope),
     loadRecentReportsFromActivity(scope),
     loadMaintenanceSummaryData(scope),
@@ -1539,6 +1571,7 @@ async function loadDashboardData(dateRange = null, scope = {}) {
     loadMaintenanceTrendData(scope),
     loadDeviceActivityLogsData(scope),
     loadDeviceStockMovementsData(scope),
+    loadLiquidatedSummaryData(scope),
   ])
 
   const filteredReports = filterByDateRange(reports, "updatedAt", dateRange)
@@ -1551,6 +1584,7 @@ async function loadDashboardData(dateRange = null, scope = {}) {
     reports: filteredReports,
     maintenanceSummary,
     inventorySummary,
+    liquidatedSummary,
     deviceLogs: filteredDeviceLogs,
     deviceStockMovements: filteredDeviceStockMovements,
     templates: [],

@@ -1326,7 +1326,7 @@ router.put("/:id", async (req, res) => {
     if (status === "inactive" || status === "thanh_ly") {
       await logActivity({
         action: "device.liquidation",
-        description: `Thanh lý thiết bị #${id} - ${String(name || "").trim() || "Không rõ tên"}${liquidationFacility ? " | Tại: " + liquidationFacility : ""}${liquidationValue ? " | Giá trị: " + new Intl.NumberFormat("vi-VN").format(liquidationValue) + " VND" : ""}`,
+        description: `Thanh lý thiết bị ${String(name || "").trim() || "Không rõ tên"}${liquidationFacility ? " | Tại: " + liquidationFacility : ""}${liquidationValue ? " | Giá trị: " + new Intl.NumberFormat("vi-VN").format(liquidationValue) + " VND" : ""}`,
         entityType: "device",
         entityId: id,
       })
