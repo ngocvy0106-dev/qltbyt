@@ -165,17 +165,52 @@ function buildDepartmentDisplay(device: DeviceItem) {
   return splitDepartmentAndLocation(device.location)
 }
 
+function encryptQr(text: string): string {
+  const key = "QLTBYT_SECRET_2026"
+  const utf8Text = encodeURIComponent(text)
+  let xorResult = ""
+  for (let i = 0; i < utf8Text.length; i++) {
+    xorResult += String.fromCharCode(utf8Text.charCodeAt(i) ^ key.charCodeAt(i % key.length))
+  }
+  return "ENC:" + btoa(xorResult)
+}
+
 function buildDeviceQrContent(device: DeviceItem) {
   const code = String(device.code || "-").trim() || "-"
   const name = String(device.name || "-").trim() || "-"
 
-  // Sử dụng định dạng JSON để mã QR trông gọn gàng, chuyên nghiệp (dành cho máy đọc)
-  // và khác biệt hoàn toàn so với phần text in trên tem, 
-  // đồng thời app Flutter vẫn tự động parse được (nhờ jsonDecode có sẵn trong app).
-  return JSON.stringify({
+  let statusText = "Không xác định"
+  switch (device.status) {
+    case "available":
+    case "active": statusText = "Hoạt động"; break;
+    case "maintenance": statusText = "Đang bảo trì"; break;
+    case "repairing": statusText = "Đang sửa chữa"; break;
+    case "inactive": statusText = "Đã thanh lý"; break;
+    case "broken": statusText = "Hỏng"; break;
+    default: statusText = device.status || "-"; break;
+  }
+
+  const deptInfo = buildDepartmentDisplay(device)
+  let locationInfo = "Chưa phân khoa"
+  if (deptInfo.department && deptInfo.department !== "-") {
+    locationInfo = deptInfo.department
+    if (deptInfo.detail && deptInfo.detail !== "-") {
+      locationInfo += ` - ${deptInfo.detail}`
+    }
+  } else if (deptInfo.detail && deptInfo.detail !== "-") {
+    locationInfo = deptInfo.detail
+  }
+
+  const payload = JSON.stringify({
     id: code,
-    name: name
-  }, null, 2)
+    name: name,
+    status: statusText,
+    location: locationInfo
+  })
+
+  // Mã hóa payload để người dùng dùng Camera/Zalo quét sẽ không thấy nội dung thật
+  // App Flutter sẽ tự động giải mã ngược lại
+  return encryptQr(payload)
 }
 
 function formatDeviceValue(value: DeviceItem["value"]) {
