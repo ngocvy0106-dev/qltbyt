@@ -102,7 +102,7 @@ const permissionModules: PermissionModule[] = [
     id: 7,
     title: "Quản trị",
     icon: Users,
-    permissions: ["Quản lý người dùng", "Quản lý phân quyền", "Xem nhật ký", "Sao lưu dữ liệu"],
+    permissions: ["Quản lý người dùng", "Quản lý phân quyền"],
   },
 ]
 
@@ -511,15 +511,6 @@ export function PermissionsPage() {
               <Input value={formName} onChange={(event) => setFormName(event.target.value)} placeholder="Ví dụ: Nhân viên bảo trì" />
             </div>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">Mô tả</p>
-              <Textarea
-                value={formDescription}
-                onChange={(event) => setFormDescription(event.target.value)}
-                placeholder="Mô tả ngắn về phạm vi sử dụng vai trò"
-                rows={3}
-              />
-            </div>
 
             <div className="space-y-3">
               <p className="text-sm font-medium text-foreground">Quyền truy cập</p>

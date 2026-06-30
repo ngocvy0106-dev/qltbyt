@@ -753,7 +753,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => setIsProfileOpen((previous) => !previous)}
-          className="w-full flex items-center gap-3 px-2 py-2 rounded-lg bg-sidebar-accent/50 text-left hover:bg-sidebar-accent"
+          className="w-full flex items-center gap-3 px-2 py-2 rounded-lg bg-sidebar-accent/50 text-left hover:bg-sidebar-accent cursor-pointer transition-colors"
         >
           <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
             <span className="text-sm font-medium text-primary">{avatarText || "U"}</span>

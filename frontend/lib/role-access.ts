@@ -79,8 +79,6 @@ const permissionAllowedPaths: Record<string, string[]> = {
 
   "quan ly nguoi dung": ["/users"],
   "quan ly phan quyen": ["/permissions"],
-  "xem nhat ky": ["/reports"],
-  "sao luu du lieu": ["/reports"],
 }
 
 function resolveAllowedPathsByPermissions(permissions?: string[] | null) {
