@@ -521,23 +521,32 @@ export function PermissionsPage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm font-medium text-foreground">Quyền truy cập</p>
-              <div className="grid grid-cols-1 gap-2 rounded-md border border-border p-3 md:grid-cols-2">
-                {allPermissions.map((permission) => {
-                  const checked = isAdminForm || formPermissions.includes(permission)
-
-                  return (
-                    <label key={permission} className="flex cursor-pointer items-start gap-2 text-sm text-foreground">
-                      <Checkbox
-                        checked={checked}
-                        disabled={isAdminForm}
-                        onCheckedChange={(value) => togglePermission(permission, Boolean(value))}
-                      />
-                      <span>{permission}</span>
-                    </label>
-                  )
-                })}
+              <div className="grid grid-cols-1 gap-6 rounded-md border border-border p-4 md:grid-cols-2">
+                {permissionModules.map((module) => (
+                  <div key={module.id} className="space-y-3">
+                    <div className="flex items-center gap-2 border-b border-border pb-1">
+                      <module.icon className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-semibold text-foreground">{module.title}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 pl-2">
+                      {module.permissions.map((permission) => {
+                        const checked = isAdminForm || formPermissions.includes(permission)
+                        return (
+                          <label key={permission} className="flex cursor-pointer items-center gap-2 text-sm text-foreground hover:text-primary transition-colors">
+                            <Checkbox
+                              checked={checked}
+                              disabled={isAdminForm}
+                              onCheckedChange={(value) => togglePermission(permission, Boolean(value))}
+                            />
+                            <span>{permission}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
