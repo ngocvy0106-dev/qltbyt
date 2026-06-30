@@ -179,40 +179,11 @@ function encryptQr(text: string): string {
 
 function buildDeviceQrContent(device: DeviceItem) {
   const code = String(device.code || "-").trim() || "-"
-  const name = String(device.name || "-").trim() || "-"
-
-  let statusText = "Không xác định"
-  switch (device.status) {
-    case "available":
-    case "active": statusText = "Hoạt động"; break;
-    case "maintenance": statusText = "Đang bảo trì"; break;
-    case "repairing": statusText = "Đang sửa chữa"; break;
-    case "inactive": statusText = "Đã thanh lý"; break;
-    case "broken": statusText = "Hỏng"; break;
-    default: statusText = device.status || "-"; break;
-  }
-
-  const deptInfo = buildDepartmentDisplay(device)
-  let locationInfo = "Chưa phân khoa"
-  if (deptInfo.department && deptInfo.department !== "-") {
-    locationInfo = deptInfo.department
-    if (deptInfo.detail && deptInfo.detail !== "-") {
-      locationInfo += ` - ${deptInfo.detail}`
-    }
-  } else if (deptInfo.detail && deptInfo.detail !== "-") {
-    locationInfo = deptInfo.detail
-  }
-
-  const payload = JSON.stringify({
-    id: code,
-    name: name,
-    status: statusText,
-    location: locationInfo
-  })
-
-  // Mã hóa payload để người dùng dùng Camera/Zalo quét sẽ không thấy nội dung thật
-  // App Flutter sẽ tự động giải mã ngược lại
-  return encryptQr(payload)
+  
+  // Để mã QR đơn giản nhất có thể (ít chấm, vuông to) giúp camera ESP32 đọc siêu nhanh,
+  // chúng ta chỉ mã hóa mỗi MÃ THIẾT BỊ thay vì cả cụm JSON dài dòng.
+  // App Flutter vốn dĩ chỉ cần lấy mã này để đối chiếu với database.
+  return encryptQr(code)
 }
 
 function formatDeviceValue(value: DeviceItem["value"]) {
