@@ -168,13 +168,14 @@ function buildDepartmentDisplay(device: DeviceItem) {
 function buildDeviceQrContent(device: DeviceItem) {
   const code = String(device.code || "-").trim() || "-"
   const name = String(device.name || "-").trim() || "-"
-  const model = String(device.model || "-").trim() || "-"
 
-  return [
-    `MA_THIET_BI: ${code}`,
-    `TEN_THIET_BI: ${name}`,
-    `MODEL: ${model}`,
-  ].join("\n")
+  // Sử dụng định dạng JSON để mã QR trông gọn gàng, chuyên nghiệp (dành cho máy đọc)
+  // và khác biệt hoàn toàn so với phần text in trên tem, 
+  // đồng thời app Flutter vẫn tự động parse được (nhờ jsonDecode có sẵn trong app).
+  return JSON.stringify({
+    id: code,
+    name: name
+  }, null, 2)
 }
 
 function formatDeviceValue(value: DeviceItem["value"]) {
