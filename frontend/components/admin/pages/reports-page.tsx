@@ -126,6 +126,17 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;")
 }
 
+function hasPermission(permissions: string[] | undefined, permissionName: string, role?: string | null) {
+  if (role && ["admin", "administrator", "super admin", "quản trị viên", "quan tri vien"].includes(
+    role.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d")
+  )) {
+    return true
+  }
+  if (!permissions) return false
+  if (permissions.some((p) => p.toLowerCase().trim() === "toàn quyền")) return true
+  return permissions.some((p) => p.toLowerCase().trim() === permissionName.toLowerCase().trim())
+}
+
 type ChartPoint = {
   label: string
   value: number
@@ -1652,10 +1663,12 @@ export function ReportsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" className="gap-2" onClick={handlePrint}>
-                <Printer className="h-4 w-4" />
-                In báo cáo
-              </Button>
+              {hasPermission(loggedInUser.permissions, "Xuất báo cáo", loggedInUser.role) && (
+                <Button variant="outline" className="gap-2" onClick={handlePrint}>
+                  <Printer className="h-4 w-4" />
+                  In báo cáo
+                </Button>
+              )}
             </div>
           </div>
 
