@@ -59,6 +59,8 @@ interface DeviceItem {
   createdBy?: string | null
   imageUrl?: string | null
   batchCode?: string | null
+  liquidationValue?: string | number | null
+  liquidationFacility?: string | null
 }
 
 interface LoggedInUser {
@@ -469,6 +471,8 @@ export function DevicesPage() {
     value: "",
     maintenanceInterval: "",
     imageUrl: "",
+    liquidationValue: "",
+    liquidationFacility: "",
   })
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -517,7 +521,15 @@ export function DevicesPage() {
   )
 
   const statusOptions = useMemo(() => {
-    return Object.entries(statusLabels).map(([value, label]) => ({ value, label }))
+    const uniqueOptions: { value: string; label: string }[] = []
+    const seenLabels = new Set<string>()
+    for (const [value, label] of Object.entries(statusLabels)) {
+      if (!seenLabels.has(label)) {
+        seenLabels.add(label)
+        uniqueOptions.push({ value, label })
+      }
+    }
+    return uniqueOptions
   }, [])
 
   const sortedDevices = useMemo(() => {
@@ -801,6 +813,8 @@ export function DevicesPage() {
       value: String(device.value ?? ""),
       maintenanceInterval: String(device.maintenanceInterval || ""),
       imageUrl: String(device.imageUrl || ""),
+      liquidationValue: String(device.liquidationValue ?? ""),
+      liquidationFacility: String(device.liquidationFacility || ""),
     })
     setIsEditDialogOpen(true)
   }
@@ -861,6 +875,8 @@ export function DevicesPage() {
           value: editForm.value.trim() || null,
           maintenanceInterval: editForm.maintenanceInterval.trim() || null,
           imageUrl: editForm.imageUrl.trim() || null,
+          liquidationValue: editForm.status === "inactive" || editForm.status === "thanh_ly" ? (editForm.liquidationValue?.trim() || null) : null,
+          liquidationFacility: editForm.status === "inactive" || editForm.status === "thanh_ly" ? (editForm.liquidationFacility?.trim() || null) : null,
         }),
       })
 
@@ -2138,6 +2154,33 @@ export function DevicesPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {editForm.status === "inactive" && (
+              <>
+                <div className="space-y-1">
+                  <Label>Cơ sở thanh lý</Label>
+                  <Input
+                    placeholder="Nhập nơi tiếp nhận thanh lý (nếu có)"
+                    value={editForm.liquidationFacility ?? ""}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, liquidationFacility: event.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Giá trị thanh lý (VND)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="VD: 5000000"
+                    value={editForm.liquidationValue ?? ""}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, liquidationValue: event.target.value }))
+                    }
+                  />
+                </div>
+              </>
+            )}
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSubmitting}>
