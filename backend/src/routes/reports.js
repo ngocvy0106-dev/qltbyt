@@ -975,9 +975,10 @@ async function loadCostByMonthData(scope = {}) {
         if (!isLiquidated) {
           return
         }
+        point[targetKey] += toSafeNumber(row.liquidation_value ?? row.device_value)
+      } else {
+        point[targetKey] += toSafeNumber(row.cost ?? row.device_value)
       }
-
-      point[targetKey] += toSafeNumber(row.cost ?? row.device_value)
     })
   }
 
@@ -1000,6 +1001,7 @@ async function loadCostByMonthData(scope = {}) {
        d.updated_at,
        d.status,
        d.value AS device_value,
+       d.liquidation_value,
        COALESCE(dep.name, 'Chưa phân khoa') AS department_name
      FROM devices d
      LEFT JOIN departments dep ON d.department_id = dep.id`,
@@ -1009,10 +1011,11 @@ async function loadCostByMonthData(scope = {}) {
        updated_at,
        status,
        value AS device_value,
+       liquidation_value,
        'Chưa phân khoa' AS department_name
      FROM devices`,
-    `SELECT id AS device_id, created_at AS date_value, updated_at, status, value AS device_value FROM devices`,
-    `SELECT id AS device_id, purchase_date AS date_value, updated_at, status, value AS device_value FROM devices`,
+    `SELECT id AS device_id, created_at AS date_value, updated_at, status, value AS device_value, liquidation_value FROM devices`,
+    `SELECT id AS device_id, purchase_date AS date_value, updated_at, status, value AS device_value, liquidation_value FROM devices`,
   ])
 
   const visibleDeviceIds = scope?.isEmployee ? await loadEmployeeVisibleDeviceIds(scope) : new Set()
@@ -1382,12 +1385,12 @@ async function loadDeviceStockMovementsData(scope = {}) {
   const rows = await safeQueryVariants([
     `SELECT id, description, ` + "`action` AS action_name, created_at" + `
      FROM activity
-     WHERE ` + "`action`" + ` IN ('device.create', 'device.import_batch', 'device.delete')
+     WHERE ` + "`action`" + ` IN ('device.create', 'device.import_batch', 'device.delete', 'device.liquidation')
      ORDER BY id DESC
      LIMIT 30`,
     `SELECT id, description, ` + "`action` AS action_name" + `
      FROM activity
-     WHERE ` + "`action`" + ` IN ('device.create', 'device.import_batch', 'device.delete')
+     WHERE ` + "`action`" + ` IN ('device.create', 'device.import_batch', 'device.delete', 'device.liquidation')
      ORDER BY id DESC
      LIMIT 30`,
   ])
@@ -1435,7 +1438,7 @@ async function loadDeviceStockMovementsData(scope = {}) {
 
       if (actionName === "device.import_batch") {
         actionLabel = "Nhập CSV"
-      } else if (actionName === "device.delete") {
+      } else if (actionName === "device.delete" || actionName === "device.liquidation") {
         actionLabel = "Xuất"
       }
 
@@ -1455,7 +1458,7 @@ async function loadDeviceStockMovementsData(scope = {}) {
 
     if (actionName === "device.import_batch") {
       actionLabel = "Nhập CSV"
-    } else if (actionName === "device.delete") {
+    } else if (actionName === "device.delete" || actionName === "device.liquidation") {
       actionLabel = "Xuất"
     }
 

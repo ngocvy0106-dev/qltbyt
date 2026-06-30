@@ -1266,6 +1266,8 @@ router.put("/:id", async (req, res) => {
       value,
       maintenanceInterval,
       imageUrl,
+      liquidationValue,
+      liquidationFacility,
     } = req.body || {}
 
     connection = await pool.getConnection()
@@ -1298,6 +1300,16 @@ router.put("/:id", async (req, res) => {
       updateValues.push(imageUrl ?? null)
     }
 
+    if (liquidationValue !== undefined) {
+      updateFields.push("liquidation_value = ?")
+      updateValues.push(liquidationValue ?? null)
+    }
+    
+    if (liquidationFacility !== undefined) {
+      updateFields.push("liquidation_facility = ?")
+      updateValues.push(liquidationFacility ?? null)
+    }
+
     updateFields.push("updated_at = NOW()")
 
     const [result] = await connection.query(
@@ -1311,12 +1323,21 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy thiết bị" })
     }
 
-    await logActivity({
-      action: "device.update",
-      description: `Cập nhật thiết bị #${id} | ${String(name || "").trim() || "Không rõ tên"}`,
-      entityType: "device",
-      entityId: id,
-    })
+    if (status === "inactive" || status === "thanh_ly") {
+      await logActivity({
+        action: "device.liquidation",
+        description: `Thanh lý thiết bị #${id} - ${String(name || "").trim() || "Không rõ tên"}${liquidationFacility ? " | Tại: " + liquidationFacility : ""}${liquidationValue ? " | Giá trị: " + new Intl.NumberFormat("vi-VN").format(liquidationValue) + " VND" : ""}`,
+        entityType: "device",
+        entityId: id,
+      })
+    } else {
+      await logActivity({
+        action: "device.update",
+        description: `Cập nhật thiết bị #${id} - ${String(name || "").trim() || "Không rõ tên"}`,
+        entityType: "device",
+        entityId: id,
+      })
+    }
 
     return res.json({ ok: true })
   } catch (error) {

@@ -1280,7 +1280,7 @@ router.get("/device/:deviceId/logs", async (req, res) => {
     }
 
     repairRows.forEach((row) => {
-      logs.push({
+    logs.push({
         id: `repair-${row.id}`,
         type: "repair",
         code: row.request_code || `RP${String(row.id).padStart(3, "0")}`,
@@ -1292,6 +1292,36 @@ router.get("/device/:deviceId/logs", async (req, res) => {
           (row.technician_name ? ` | Nhân viên xử lý: ${row.technician_name}` : ""),
       })
     })
+
+    try {
+      const [liqRows] = await pool.query(
+        `SELECT
+           id,
+           created_at,
+           description
+         FROM activity
+         WHERE entity_type = 'device' 
+           AND entity_id = ?
+           AND \`action\` = 'device.liquidation'
+         ORDER BY id DESC`,
+        [deviceId]
+      )
+      
+      const liquidationRows = liqRows || []
+      liquidationRows.forEach((row) => {
+        logs.push({
+          id: `liquidation-${row.id}`,
+          type: "liquidation",
+          code: `LQ${String(row.id).padStart(3, "0")}`,
+          title: "Thanh lý thiết bị",
+          status: "hoan_thanh",
+          date: toLogTimestamp(row.created_at),
+          description: row.description || "Đã thanh lý thiết bị",
+        })
+      })
+    } catch (e) {
+      // ignore
+    }
 
     logs.sort((left, right) => {
       const leftTime = left.date ? new Date(left.date).getTime() : 0
