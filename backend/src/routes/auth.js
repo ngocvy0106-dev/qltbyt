@@ -253,7 +253,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Thiếu tài khoản hoặc mật khẩu" })
     }
 
-      const queryVariants = [
+      const baseVariants = [
       `SELECT
         u.id,
         u.username,
@@ -344,6 +344,11 @@ router.post("/login", async (req, res) => {
        LIMIT 1`,
      ]
 
+    const queryVariants = [
+      ...baseVariants.map(q => q.replace('u.id,', 'u.id, u.status,')),
+      ...baseVariants
+    ]
+
     let rows = []
     let lastError = null
 
@@ -372,6 +377,12 @@ router.post("/login", async (req, res) => {
     }
 
     const user = rows[0]
+
+    const statusText = String(user.status || "").trim().toLowerCase()
+    if (statusText === "inactive" || statusText === "locked" || statusText === "khoa" || statusText === "khóa") {
+      return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên." })
+    }
+
     const isValidPassword = user.password_hash === password
 
     if (!isValidPassword) {
