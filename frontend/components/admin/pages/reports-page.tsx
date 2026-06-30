@@ -341,6 +341,7 @@ export function ReportsPage() {
   const [costByMonth, setCostByMonth] = useState<ChartPoint[]>([])
   const [deviceCategoryShare, setDeviceCategoryShare] = useState<CategorySharePoint[]>([])
   const [inventorySummary, setInventorySummary] = useState<InventorySummaryItem[]>([])
+  const [liquidatedSummary, setLiquidatedSummary] = useState<{quantity: number, totalValue: number}>({quantity: 0, totalValue: 0})
   const [deviceActivityLogs, setDeviceActivityLogs] = useState<DeviceActivityLogItem[]>([])
   const [deviceStockMovements, setDeviceStockMovements] = useState<DeviceStockMovementItem[]>([])
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -452,9 +453,9 @@ export function ReportsPage() {
         acc.totalInputValue += Number(item.totalInputValue) || 0
         return acc
       },
-      { quantity: 0, inUse: 0, inStock: 0, totalInputValue: 0 },
+      { quantity: 0, inUse: 0, inStock: 0, totalInputValue: 0, liquidatedQuantity: liquidatedSummary.quantity, liquidatedValue: liquidatedSummary.totalValue },
     )
-  }, [inventorySummary])
+  }, [inventorySummary, liquidatedSummary])
 
   const costMax = useMemo(
     () =>
@@ -659,6 +660,7 @@ export function ReportsPage() {
         reports?: ReportItem[]
         maintenanceSummary?: MaintenanceSummaryItem[]
         inventorySummary?: InventorySummaryItem[]
+        liquidatedSummary?: { quantity: number, totalValue: number }
         deviceLogs?: DeviceActivityLogItem[]
         deviceStockMovements?: DeviceStockMovementItem[]
         templates?: ReportTemplateItem[]
@@ -681,11 +683,13 @@ export function ReportsPage() {
         Array.isArray(data.charts?.deviceCategoryShare) ? data.charts?.deviceCategoryShare : [],
       )
       setInventorySummary(Array.isArray(data.inventorySummary) ? data.inventorySummary : [])
+      setLiquidatedSummary(data.liquidatedSummary || { quantity: 0, totalValue: 0 })
     } catch {
       setDynamicMetrics([])
       setReportData([])
       setMaintenanceSummaryData([])
       setInventorySummary([])
+      setLiquidatedSummary({ quantity: 0, totalValue: 0 })
       setDeviceActivityLogs([])
       setDeviceStockMovements([])
       setReportTemplates([])
@@ -828,8 +832,13 @@ export function ReportsPage() {
       <tr>
         <td>Tổng lịch bảo trì (kỳ báo cáo)</td>
         <td>${new Intl.NumberFormat("vi-VN").format(maintenanceTotals.total)}</td>
-        <td>Tổng yêu cầu sửa chữa ghi nhận</td>
         <td>${new Intl.NumberFormat("vi-VN").format(repairLogs.length)}</td>
+      </tr>
+      <tr>
+        <td>Thiết bị đã thanh lý</td>
+        <td>${new Intl.NumberFormat("vi-VN").format(inventoryTotals.liquidatedQuantity || 0)}</td>
+        <td>Tổng giá trị thanh lý</td>
+        <td>${new Intl.NumberFormat("vi-VN").format(inventoryTotals.liquidatedValue || 0)} VND</td>
       </tr>`
 
     const maintenanceStatusRowsHtml = `
@@ -1142,6 +1151,26 @@ export function ReportsPage() {
         new Intl.NumberFormat("vi-VN").format(inventoryTotals.inStock),
         "Tổng giá trị nhập",
         `${new Intl.NumberFormat("vi-VN").format(inventoryTotals.totalInputValue)} VND`,
+      ]
+        .map(csvCell)
+        .join(","),
+    )
+    rows.push(
+      [
+        "Tổng lịch bảo trì",
+        new Intl.NumberFormat("vi-VN").format(maintenanceTotals.total),
+        "Tổng yêu cầu sửa chữa",
+        new Intl.NumberFormat("vi-VN").format(repairLogs.length),
+      ]
+        .map(csvCell)
+        .join(","),
+    )
+    rows.push(
+      [
+        "Thiết bị đã thanh lý",
+        new Intl.NumberFormat("vi-VN").format(inventoryTotals.liquidatedQuantity || 0),
+        "Tổng giá trị thanh lý",
+        `${new Intl.NumberFormat("vi-VN").format(inventoryTotals.liquidatedValue || 0)} VND`,
       ]
         .map(csvCell)
         .join(","),
@@ -1681,7 +1710,7 @@ export function ReportsPage() {
                       <h3 className="text-2xl font-semibold text-foreground">Kiểm kê thiết bị</h3>
 
                       <div className="mt-6 rounded-md border border-border/60 bg-muted/10 p-4">
-                      <div className="mb-4 grid grid-cols-2 gap-2 rounded-md bg-background p-3 text-sm md:grid-cols-4">
+                      <div className="mb-4 grid grid-cols-2 gap-2 rounded-md bg-background p-3 text-sm md:grid-cols-6">
                         <div>
                           <p className="text-muted-foreground">Tổng thiết bị</p>
                           <p className="font-semibold text-foreground">{inventoryTotals.quantity}</p>
@@ -1695,9 +1724,19 @@ export function ReportsPage() {
                           <p className="font-semibold text-foreground">{inventoryTotals.inStock}</p>
                         </div>
                         <div>
+                          <p className="text-muted-foreground">Đã thanh lý</p>
+                          <p className="font-semibold text-foreground">{inventoryTotals.liquidatedQuantity || 0}</p>
+                        </div>
+                        <div>
                           <p className="text-muted-foreground">Tổng giá trị nhập vào</p>
                           <p className="font-semibold text-foreground">
                             {new Intl.NumberFormat("vi-VN").format(inventoryTotals.totalInputValue)} VND
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Tổng giá trị thanh lý</p>
+                          <p className="font-semibold text-foreground">
+                            {new Intl.NumberFormat("vi-VN").format(inventoryTotals.liquidatedValue || 0)} VND
                           </p>
                         </div>
                       </div>
@@ -1950,7 +1989,7 @@ export function ReportsPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
-                      <span>Chi phí bảo trì + thanh lý</span>
+                      <span>Chi phí bảo trì</span>
                     </div>
                   </div>
 
