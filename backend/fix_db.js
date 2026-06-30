@@ -10,12 +10,12 @@ require('dotenv').config({ path: 'D:/HOCKY8/DOANTN/DATN_PROJECT/backend/.env' })
     ssl: { rejectUnauthorized: true }
   });
   
-  const [rows] = await pool.query("SELECT id, description FROM activity WHERE action = 'device.liquidation'");
-  for (let row of rows) {
-    let newDesc = row.description.replace(/#\d+\s*-\s*/g, '');
-    console.log("Updating:", row.id, "to", newDesc);
-    await pool.query('UPDATE activity SET description = ? WHERE id = ?', [newDesc, row.id]);
-  }
-  console.log('Done cleaning DB.');
+  // Find Nguyễn Văn A's ID
+  const [users] = await pool.query("SELECT id FROM users WHERE full_name = 'Nguyễn Văn A' OR username = 'admin' LIMIT 1");
+  const adminId = users.length > 0 ? users[0].id : 1;
+  
+  // Update all activities that lack a user_id
+  await pool.query("UPDATE activity SET user_id = ? WHERE user_id IS NULL", [adminId]);
+  console.log('Done updating user_id for system activities.');
   process.exit(0);
 })();
