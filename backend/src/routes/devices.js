@@ -1889,7 +1889,7 @@ router.get("/maintenance-alerts", async (req, res) => {
     })
 
     return res.json({
-      notifications: notifications.slice(0, 5),
+      notifications: notifications.slice(0, 50),
       total: notifications.length,
     })
   } catch (error) {
