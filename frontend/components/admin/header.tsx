@@ -280,27 +280,25 @@ export function Header() {
               </Button>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {notifications.length === 0 ? (
-              <DropdownMenuItem className="text-sm text-muted-foreground">Không có thông báo mới</DropdownMenuItem>
-            ) : (
-              notifications.map((notification) => (
-                <DropdownMenuItem
-                  key={notification.id}
-                  className="flex flex-col items-start gap-1 p-3 cursor-pointer"
-                  onSelect={() => navigateByNotification(notification)}
-                >
-                  <div className="flex items-start justify-between w-full">
-                    <span className="font-medium text-sm">{notification.title}</span>
-                    <span className="text-xs text-muted-foreground">{formatNotificationTime(notification.time)}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{notification.description}</span>
-                </DropdownMenuItem>
-              ))
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center text-primary cursor-pointer" onSelect={() => router.push("/dashboard") }>
-              Xem tất cả thông báo
-            </DropdownMenuItem>
+            <div className="max-h-[240px] overflow-y-auto custom-scrollbar">
+              {notifications.length === 0 ? (
+                <DropdownMenuItem className="text-sm text-muted-foreground">Không có thông báo mới</DropdownMenuItem>
+              ) : (
+                notifications.map((notification) => (
+                  <DropdownMenuItem
+                    key={notification.id}
+                    className="flex flex-col items-start gap-1 p-3 cursor-pointer"
+                    onSelect={() => navigateByNotification(notification)}
+                  >
+                    <div className="flex items-start justify-between w-full">
+                      <span className="font-medium text-sm">{notification.title}</span>
+                      <span className="text-xs text-muted-foreground min-w-max ml-2">{formatNotificationTime(notification.time)}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{notification.description}</span>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -488,10 +488,21 @@ export function DevicesPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [isImportingCsv, setIsImportingCsv] = useState(false)
 
-  const categories = useMemo(
-    () => Array.from(new Set(devices.map((device) => device.category).filter(Boolean))),
-    [devices]
-  )
+  const [categories, setCategories] = useState<string[]>([])
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/categories/summary`, { cache: "no-store" })
+        if (response.ok) {
+          const data = await response.json()
+          const categoryNames = (data.categories || []).map((c: any) => c.name).filter(Boolean)
+          setCategories(Array.from(new Set(categoryNames)) as string[])
+        }
+      } catch (e) {}
+    }
+    fetchCategories()
+  }, [apiBaseUrl])
 
   const departments = useMemo(
     () =>
@@ -506,23 +517,8 @@ export function DevicesPage() {
   )
 
   const statusOptions = useMemo(() => {
-    return Array.from(
-      new Map(
-        devices
-          .map((device) => {
-            const rawStatus = String(device.status || "").trim()
-            if (!rawStatus) {
-              return null
-            }
-
-            const value = rawStatus.toLowerCase()
-            const label = statusLabels[value] || rawStatus
-            return [value, label] as const
-          })
-          .filter((item): item is readonly [string, string] => Boolean(item))
-      )
-    ).map(([value, label]) => ({ value, label }))
-  }, [devices])
+    return Object.entries(statusLabels).map(([value, label]) => ({ value, label }))
+  }, [])
 
   const sortedDevices = useMemo(() => {
     return [...devices].sort((first, second) => {
