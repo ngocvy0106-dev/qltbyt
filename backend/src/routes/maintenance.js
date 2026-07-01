@@ -424,25 +424,71 @@ router.get("/:id", async (req, res) => {
       return res.status(400).json({ message: "ID không hợp lệ" })
     }
 
-    const [rows] = await pool.query(
+    const queryVariants = [
       `SELECT
          m.id,
          m.device_id,
-         COALESCE(d.device_name, 'Thiết bị chưa xác định') AS device_name,
+         COALESCE(d.device_name, m.device_name, 'Thiết bị chưa xác định') AS device_name,
          COALESCE(d.device_code, '-') AS serial_number,
          m.scheduled_date,
          m.completion_date,
-         m.assigned_technician,
+         m.technician_name AS assigned_technician,
          m.technician_name,
-         m.maintenance_cost,
+         m.cost AS maintenance_cost,
          m.status,
          m.created_by,
-         m.notes
+         m.note AS notes
        FROM maintenance_tasks m
        LEFT JOIN devices d ON m.device_id = d.id
        WHERE m.id = ?`,
-      [id]
-    )
+      `SELECT
+         m.id,
+         m.device_id,
+         COALESCE(d.device_name, m.device_name, 'Thiết bị chưa xác định') AS device_name,
+         COALESCE(d.device_code, '-') AS serial_number,
+         m.scheduled_date,
+         m.technician_name,
+         m.cost AS maintenance_cost,
+         m.status,
+         m.note AS notes
+       FROM maintenance_tasks m
+       LEFT JOIN devices d ON m.device_id = d.id
+       WHERE m.id = ?`,
+       `SELECT
+         m.id,
+         m.device_id,
+         COALESCE(d.device_name, m.device_name, 'Thiết bị chưa xác định') AS device_name,
+         COALESCE(d.device_code, '-') AS serial_number,
+         m.scheduled_date,
+         m.technician_name,
+         m.status,
+         m.note AS notes
+       FROM maintenance_tasks m
+       LEFT JOIN devices d ON m.device_id = d.id
+       WHERE m.id = ?`
+    ]
+
+    let rows = []
+    let lastError = null
+
+    for (const query of queryVariants) {
+      try {
+        const [r] = await pool.query(query, [id])
+        rows = r
+        lastError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastError = error
+          continue
+        }
+        throw error
+      }
+    }
+
+    if (lastError) {
+      throw lastError
+    }
 
     if (rows.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy lịch bảo trì" })
