@@ -1418,11 +1418,13 @@ router.get("/maintenance-alerts", async (req, res) => {
     transferRows.forEach((row) => {
       const requestCode = row.request_code || `DC-${row.id}`
       const transferStatus = normalizeTransferStatus(row.status)
+      const isAllocation = requestCode.startsWith("CP")
+      const titlePrefix = isAllocation ? "Yêu cầu cấp phát thiết bị" : "Yêu cầu điều chuyển"
 
       if (isAdmin) {
         notifications.push({
           id: `transfer-${row.id}`,
-          title: `Yêu cầu điều chuyển ${requestCode}`,
+          title: `${titlePrefix} ${requestCode}`,
           description: `${row.device_name || "Thiết bị"} • ${row.requester_name || "Người dùng hệ thống"}`,
           time: row.created_at || row.request_date || null,
           type: "transfer",
