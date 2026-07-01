@@ -591,6 +591,19 @@ async function getRecentActivitiesFromDb() {
           const serialLabel = transferCode ? ` [${transferCode}]` : ""
           const transferLabel = `${transferTypeLabel} thiết bị ${deviceName}${serialLabel}`
 
+          if (action === "transfer.assign-device") {
+            return {
+              title: "Điều chuyển - Cấp phát",
+              desc: shortTime
+                ? `${roleName} [${fullName}] - ${transferLabel} - ${shortTime}`
+                : `${roleName} [${fullName}] - ${transferLabel}`,
+              type: "transfer",
+              entityId: transferId,
+              action: action,
+              status: transferMeta?.status,
+            }
+          }
+
           let displayTitle = "Điều chuyển - Cấp phát"
           let displayDesc = shortTime
             ? `${roleName} [${fullName}] - ${transferLabel} - ${shortTime}`
