@@ -1465,7 +1465,7 @@ router.get("/maintenance-alerts", async (req, res) => {
     try {
       const repairStatusCondition = isAdmin
         ? `r.status IN ('pending', 'cho xu ly')`
-        : `r.status IN ('assigned', 'da phan cong', 'completed', 'hoan thanh')`
+        : `r.status IN ('assigned', 'da phan cong', 'in_progress', 'dang thuc hien', 'completed', 'hoan thanh')`
 
       const queryVariants = [
         `SELECT
@@ -1581,13 +1581,23 @@ router.get("/maintenance-alerts", async (req, res) => {
           return
         }
 
+        let title = `Yêu cầu sửa chữa ${requestCode}`
+        if (normalizedRepairStatus === "completed") {
+          title += " (Hoàn thành)"
+        } else if (normalizedRepairStatus === "in_progress") {
+          title += " (Đang sửa)"
+        } else {
+          title += " (Đã phân công)"
+        }
+
         notifications.push({
           id: `repair-${row.id}`,
-          title: `Yêu cầu ${requestCode} đã được admin duyệt`,
+          title: title,
           description: `${row.device_name || "Thiết bị"} • Người yêu cầu: ${row.reporter_name || "-"}`,
           time: row.updated_at || row.created_at || null,
           type: "repair",
           entityId: row.id,
+          status: row.status,
         })
         return
       }
