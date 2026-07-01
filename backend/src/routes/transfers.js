@@ -844,6 +844,16 @@ router.post("/", async (req, res) => {
       entityId: insertId,
     })
 
+    if (shouldApplyDeviceUpdateImmediately) {
+      await logActivity({
+        userId: Number.isInteger(normalizedRequesterUserId) ? normalizedRequesterUserId : actorUserId,
+        action: "transfer.approved",
+        description: `Duyệt cấp phát trực tiếp ${finalRequestCode}`,
+        entityType: "transfer",
+        entityId: insertId,
+      })
+    }
+
     return res.json({ ok: true, id: insertId, requestCode: finalRequestCode })
   } catch (error) {
     if (connection) {
