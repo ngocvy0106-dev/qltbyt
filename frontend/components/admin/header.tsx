@@ -240,6 +240,26 @@ export function Header() {
         dispatchRefresh()
         return
       }
+      if (type === "transfer") {
+        const title = normalizeText(String(notification.title || ""))
+        let route = "/transfers"
+        if (title.includes("tu choi")) {
+          route = "/transfers?tab=rejected"
+        } else if (title.includes("duoc duyet") || title.includes("da duoc duyet")) {
+          route = "/transfers?tab=approved"
+        } else {
+          route = "/transfers?tab=pending"
+        }
+
+        if (notification.entityId) {
+          route += (route.includes("?") ? "&" : "?") + `highlight=${notification.entityId}`
+        }
+
+        router.push(route)
+        dispatchRefresh()
+        return
+      }
+
       router.push("/devices")
       dispatchRefresh()
       return
@@ -247,7 +267,11 @@ export function Header() {
 
     // Admin routing based on notification type
     if (type === "transfer") {
-      router.push("/transfers?tab=pending")
+      let route = "/transfers?tab=pending"
+      if (notification.entityId) {
+        route += `&highlight=${notification.entityId}`
+      }
+      router.push(route)
       dispatchRefresh()
       return
     }

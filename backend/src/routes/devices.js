@@ -1428,6 +1428,7 @@ router.get("/maintenance-alerts", async (req, res) => {
           description: `${row.device_name || "Thiết bị"} • ${row.requester_name || "Người dùng hệ thống"}`,
           time: row.created_at || row.request_date || null,
           type: "transfer",
+          entityId: row.id,
         })
         return
       }
@@ -1443,6 +1444,7 @@ router.get("/maintenance-alerts", async (req, res) => {
           description: `${row.device_name || "Thiết bị"} • Đã được admin duyệt`,
           time: row.updated_at || row.created_at || row.request_date || null,
           type: "transfer",
+          entityId: row.id,
         })
         return
       }
@@ -1454,6 +1456,7 @@ router.get("/maintenance-alerts", async (req, res) => {
           description: `${row.device_name || "Thiết bị"} • Vui lòng kiểm tra lại yêu cầu`,
           time: row.updated_at || row.created_at || row.request_date || null,
           type: "transfer",
+          entityId: row.id,
         })
       }
     })

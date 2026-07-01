@@ -198,6 +198,19 @@ export function TransfersPage() {
     window.dispatchEvent(new Event("devices-data-changed"))
   }
 
+  const [highlightedRowId, setHighlightedRowId] = useState<number | null>(null)
+
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight")
+    if (highlightId) {
+      setHighlightedRowId(Number(highlightId))
+      const timer = setTimeout(() => {
+        setHighlightedRowId(null)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams])
+
   useEffect(() => {
     const tabParam = String(searchParams.get("tab") || "").trim().toLowerCase()
     const validTabs: TransferStatus[] = ["all", "pending", "approved", "completed", "rejected"]
@@ -1546,7 +1559,7 @@ export function TransfersPage() {
                 )}
 
                 {!isLoading && filteredTransfers.map((item) => (
-                  <tr key={item.id} className="border-b border-border/60 hover:bg-secondary/40">
+                  <tr key={item.id} className={`border-b border-border/60 hover:bg-secondary/40 transition-all duration-1000 ${highlightedRowId === item.id ? "bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]" : ""}`}>
                     <td className="px-4 py-4 text-sm font-semibold text-foreground">{item.code}</td>
                     <td className="px-4 py-4">
                       <div>
