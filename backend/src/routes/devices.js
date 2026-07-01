@@ -1571,21 +1571,19 @@ router.get("/maintenance-alerts", async (req, res) => {
       }
 
       if (isEmployee) {
-        if (normalizedRepairStatus !== "assigned") {
-          return
-        }
-
         const assignedUserId = Number(row.assignee_user_id || 0)
         if (!Number.isInteger(userId) || userId <= 0 || assignedUserId !== userId) {
           return
         }
+
+        const isCompleted = ["completed", "hoan thanh"].includes(normalizedRepairStatus)
 
         notifications.push({
           id: `repair-${row.id}`,
           title: `Yêu cầu ${requestCode} đã được admin duyệt`,
           description: `${row.device_name || "Thiết bị"} • Người yêu cầu: ${row.reporter_name || "-"}`,
           time: row.updated_at || row.created_at || null,
-          type: "repair",
+          type: isCompleted ? "none" : "repair",
           entityId: row.id,
         })
         return
