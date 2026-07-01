@@ -1743,7 +1743,9 @@ router.get("/maintenance-alerts", async (req, res) => {
         confirmationRows.forEach((row) => {
           notifications.push({
             id: `employee-confirm-${row.id}`,
-            title: "Nhân viên xác nhận bảo trì",
+            title: (row.description || "").includes("hoàn thành") 
+                   ? "Nhân viên xác nhận hoàn thành bảo trì"
+                   : "Nhân viên xác nhận bảo trì",
             description: row.description || "Nhân viên vừa xác nhận hoàn thành bảo trì",
             time: row.created_at || null,
             type: "maintenance",

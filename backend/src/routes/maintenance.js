@@ -681,7 +681,10 @@ router.put("/:id/confirm", async (req, res) => {
         const periodicDeviceLabel = serialSuffix
           ? `${normalizedDeviceName} [${serialSuffix}]`
           : normalizedDeviceName
-        const adminNotificationMessage = `${actorFullName} xác nhận lịch bảo trì định kỳ thiết bị ${periodicDeviceLabel}`
+        const actionText = nextStatus === "completed" 
+          ? "xác nhận hoàn thành lịch bảo trì" 
+          : "xác nhận lịch bảo trì"
+        const adminNotificationMessage = `${actorFullName} ${actionText} định kỳ thiết bị ${periodicDeviceLabel}`
 
         for (const admin of adminUsers) {
           try {
