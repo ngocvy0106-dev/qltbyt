@@ -561,7 +561,7 @@ router.get("/:id", async (req, res) => {
       return res.status(400).json({ message: "ID không hợp lệ" })
     }
 
-    const [rows] = await pool.query(
+    const queryVariants = [
       `SELECT
          t.id,
          t.request_code,
@@ -578,10 +578,46 @@ router.get("/:id", async (req, res) => {
        FROM device_transfers t
        LEFT JOIN devices d ON t.device_id = d.id
        WHERE t.id = ?`,
-      [id]
-    )
+      `SELECT
+         t.id,
+         t.request_code,
+         t.device_id,
+         COALESCE(d.device_name, t.device_name, 'Thiết bị chưa xác định') AS device_name,
+         COALESCE(d.device_code, t.serial_number, '-') AS serial_number,
+         t.from_department,
+         t.to_department,
+         t.request_date,
+         t.requester_name,
+         t.transfer_reason,
+         t.status
+       FROM device_transfers t
+       LEFT JOIN devices d ON t.device_id = d.id
+       WHERE t.id = ?`
+    ]
 
-    if (rows.length === 0) {
+    let rows = []
+    let lastError = null
+
+    for (const query of queryVariants) {
+      try {
+        const [r] = await pool.query(query, [id])
+        rows = r
+        lastError = null
+        break
+      } catch (error) {
+        if (error.code === "ER_BAD_FIELD_ERROR") {
+          lastError = error
+          continue
+        }
+        throw error
+      }
+    }
+
+    if (lastError) {
+      throw lastError
+    }
+
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu" })
     }
 
