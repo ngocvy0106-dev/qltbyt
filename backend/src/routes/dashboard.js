@@ -532,6 +532,7 @@ async function getRecentActivitiesFromDb() {
               : `${roleName} [${fullName}] - ${entityName}`,
             type: "maintenance",
             entityId: parsedEntityId,
+            action: action,
           }
         }
 
@@ -591,6 +592,7 @@ async function getRecentActivitiesFromDb() {
               : `${roleName} [${fullName}] - ${transferLabel}`,
             type: "transfer",
             entityId: transferId,
+            action: action,
           }
         }
 
@@ -630,6 +632,7 @@ async function getRecentActivitiesFromDb() {
               desc: shortTime ? `${formatted} - ${shortTime}` : formatted,
               type: "repair",
               entityId: repairId,
+              action: action,
             }
           }
 
@@ -640,6 +643,7 @@ async function getRecentActivitiesFromDb() {
               : `${roleName} [${fullName}] - ${entityName}`,
             type: "repair",
             entityId: parsedEntityId,
+            action: action,
           }
         }
 

@@ -44,6 +44,9 @@ interface DashboardMaintenanceItem {
 interface DashboardActivityItem {
   title: string
   desc: string
+  type?: string
+  entityId?: number
+  action?: string
 }
 
 interface LoggedInUser {
@@ -186,7 +189,8 @@ export default function AdminDashboard() {
       }
 
       setMaintenanceList(data.maintenanceList || [])
-      setRecentActivities(data.recentActivities || [])
+      // Filter out repair.request entries from web dashboard (they are for mobile app only)
+      setRecentActivities((data.recentActivities || []).filter((a: DashboardActivityItem) => a.action !== 'repair.request'))
     } catch {
       if (!options?.silent) {
         setStats({
