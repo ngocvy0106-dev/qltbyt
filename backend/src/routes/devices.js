@@ -1599,7 +1599,7 @@ router.get("/maintenance-alerts", async (req, res) => {
     try {
       const maintenanceStatusCondition = isAdmin
         ? `m.status IN ('pending', 'in_progress', 'completed')`
-        : `m.status IN ('pending', 'in_progress')`
+        : `m.status IN ('pending', 'in_progress', 'completed')`
 
       const maintenanceQueryVariants = [
         `SELECT
@@ -1648,9 +1648,9 @@ router.get("/maintenance-alerts", async (req, res) => {
       const requestCode = row.task_code || `BT-${row.id}`
       const normalizedStatus = normalizeStatus(row.status)
 
-      // For employees: show pending/in-progress maintenance tasks relevant to them
+      // For employees: show pending/in-progress/completed maintenance tasks relevant to them
       if (isEmployee) {
-        if (normalizedStatus !== "pending" && normalizedStatus !== "in_progress") {
+        if (normalizedStatus !== "pending" && normalizedStatus !== "in_progress" && normalizedStatus !== "completed") {
           return
         }
 
