@@ -1881,6 +1881,7 @@ router.get("/maintenance-alerts", async (req, res) => {
             description: allocationCode,
             time: row.updated_at || row.created_at || null,
             type: "allocation",
+            entityId: row.transfer_id,
           })
         })
       } catch (allocationError) {
