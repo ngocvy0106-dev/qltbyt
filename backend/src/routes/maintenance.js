@@ -438,7 +438,7 @@ router.get("/:id", async (req, res) => {
          m.status,
          m.created_by,
          m.notes
-       FROM maintenance_schedules m
+       FROM maintenance_tasks m
        LEFT JOIN devices d ON m.device_id = d.id
        WHERE m.id = ?`,
       [id]

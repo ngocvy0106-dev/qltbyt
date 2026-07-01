@@ -574,7 +574,7 @@ router.get("/:id", async (req, res) => {
          r.completion_date,
          r.repair_notes,
          r.actual_cost
-       FROM repairs r
+       FROM repair_requests r
        LEFT JOIN devices d ON r.device_id = d.id
        WHERE r.id = ?`,
       [id]
