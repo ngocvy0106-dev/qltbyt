@@ -513,11 +513,15 @@ router.get("/", async (req, res) => {
     const currentYear = now.getFullYear()
 
     const completedThisMonth = items.filter((item) => {
-      if (!item.completedDate) {
+      if (item.status !== "completed") {
+        return false
+      }
+      const dateVal = item.completedTime || item.completedDate
+      if (!dateVal) {
         return false
       }
 
-      const date = new Date(item.completedDate)
+      const date = new Date(dateVal)
       if (Number.isNaN(date.getTime())) {
         return false
       }
@@ -1717,6 +1721,90 @@ router.put("/:id/complete", async (req, res) => {
       entityType: "repair",
       entityId: id,
     })
+
+    // If actor is an employee, send notification to all admin users
+    try {
+      let actorRoleName = ""
+      const actorRoleQueries = [
+        `SELECT r.role_name AS role_name
+         FROM users u
+         LEFT JOIN role r ON u.role_id = r.id
+         WHERE u.id = ?
+         LIMIT 1`,
+        `SELECT role AS role_name FROM users WHERE id = ? LIMIT 1`,
+      ]
+
+      for (const roleQuery of actorRoleQueries) {
+        try {
+          const [roleRows] = await pool.query(roleQuery, [actorUserId])
+          if (Array.isArray(roleRows) && roleRows.length) {
+            actorRoleName = String(roleRows[0]?.role_name || "").trim()
+            break
+          }
+        } catch (roleError) {
+          if (["ER_BAD_FIELD_ERROR", "ER_NO_SUCH_TABLE"].includes(roleError.code)) {
+            continue
+          }
+          throw roleError
+        }
+      }
+
+      if (isNhanVienRole(actorRoleName)) {
+        let adminUsers = []
+        const adminUserQueries = [
+          `SELECT u.id, u.full_name
+           FROM users u
+           LEFT JOIN role r ON u.role_id = r.id
+           WHERE LOWER(COALESCE(r.role_name, '')) IN ('admin', 'quan tri vien', 'quản trị viên', 'administrator')
+              OR LOWER(COALESCE(u.role, '')) LIKE '%admin%'
+           LIMIT 100`,
+          `SELECT u.id, u.full_name
+           FROM users u
+           WHERE LOWER(COALESCE(u.role, '')) LIKE '%admin%'
+           LIMIT 100`,
+        ]
+
+        let lastAdminQueryError = null
+        for (const adminQuery of adminUserQueries) {
+          try {
+            const [rows] = await pool.query(adminQuery)
+            adminUsers = rows
+            lastAdminQueryError = null
+            break
+          } catch (adminQueryError) {
+            if (["ER_BAD_FIELD_ERROR", "ER_NO_SUCH_TABLE"].includes(adminQueryError.code)) {
+              lastAdminQueryError = adminQueryError
+              continue
+            }
+            throw adminQueryError
+          }
+        }
+
+        if (!lastAdminQueryError) {
+          const actorInfo = await loadUserDisplayName(actorUserId)
+          const actorName = String(actorInfo?.name || "Nhân viên").trim() || "Nhân viên"
+          const serialLabel = deviceCode && deviceCode !== "-" ? ` [${deviceCode}]` : ""
+          const deviceLabel = `${deviceName}${serialLabel}`
+          const adminNotificationMessage = `${actorName} hoàn thành sửa chữa thiết bị ${deviceLabel}`
+
+          for (const admin of adminUsers) {
+            try {
+              await logActivity({
+                action: "repair.employee_completed",
+                description: adminNotificationMessage,
+                entityType: "repair",
+                entityId: id,
+                userId: admin.id,
+              })
+            } catch (notificationErr) {
+              console.warn(`[WARN] Failed to create admin notification for user ${admin.id}:`, String(notificationErr.message || notificationErr))
+            }
+          }
+        }
+      }
+    } catch (adminNotificationErr) {
+      console.warn("[WARN] Failed to send admin notifications for employee repair complete:", String(adminNotificationErr.message || adminNotificationErr))
+    }
 
     return res.json({ ok: true, status: "completed", completedTime: completedAtIso })
   } catch (error) {
