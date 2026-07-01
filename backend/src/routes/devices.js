@@ -1832,6 +1832,7 @@ router.get("/maintenance-alerts", async (req, res) => {
             description: row.description || (isCompleted ? "Nhân viên vừa hoàn thành sửa chữa" : "Nhân viên vừa xác nhận sửa chữa"),
             time: row.created_at || null,
             type: "repair",
+            entityId: row.entity_id || null,
           })
         })
       } catch (repairConfirmError) {

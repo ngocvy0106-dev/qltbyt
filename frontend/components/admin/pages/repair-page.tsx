@@ -232,6 +232,7 @@ export function RepairPage() {
   const [isPartsEtaDialogOpen, setIsPartsEtaDialogOpen] = useState(false)
   const [partsEtaRepairItem, setPartsEtaRepairItem] = useState<RepairItem | null>(null)
   const [partsEtaDate, setPartsEtaDate] = useState("")
+  const [highlightedRowId, setHighlightedRowId] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
   const prevDataJsonRef = useRef<string | null>(null)
 
@@ -635,6 +636,14 @@ export function RepairPage() {
     const tab = searchParams.get("tab")
     if (["requests", "in-progress", "history"].includes(tab || "")) {
       setActiveTab(tab as string)
+    }
+
+    const highlightId = searchParams.get("highlight")
+    if (highlightId) {
+      setHighlightedRowId(Number(highlightId))
+      setTimeout(() => {
+        setHighlightedRowId(null)
+      }, 1500)
     }
   }, [searchParams])
 
@@ -1524,7 +1533,7 @@ export function RepairPage() {
                     </TableRow>
                   )}
                   {!isLoading && requestItems.map((item) => (
-                    <TableRow key={item.id} className="border-border">
+                    <TableRow key={item.id} className={`border-border transition-all duration-1000 ${highlightedRowId === item.id ? "bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]" : ""}`}>
                       <TableCell className="text-center"><Badge variant="outline" className="font-mono">{item.code}</Badge></TableCell>
                       <TableCell className="text-center font-medium">{item.device}</TableCell>
                       <TableCell className="text-center max-w-[200px] truncate">{item.issue}</TableCell>
@@ -1609,7 +1618,7 @@ export function RepairPage() {
                     </TableRow>
                   )}
                   {!isLoading && inProgressItems.map((item) => (
-                    <TableRow key={item.id} className="border-border">
+                    <TableRow key={item.id} className={`border-border transition-all duration-1000 ${highlightedRowId === item.id ? "bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]" : ""}`}>
                       <TableCell className="text-center"><Badge variant="outline" className="font-mono">{item.code}</Badge></TableCell>
                       <TableCell className="text-center font-medium">{item.device}</TableCell>
                       <TableCell className="text-center max-w-[150px] truncate">{item.issue}</TableCell>
@@ -1666,7 +1675,7 @@ export function RepairPage() {
                     </TableRow>
                   )}
                   {!isLoading && historyItems.map((item) => (
-                    <TableRow key={item.id} className="border-border">
+                    <TableRow key={item.id} className={`border-border transition-all duration-1000 ${highlightedRowId === item.id ? "bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]" : ""}`}>
                       <TableCell className="text-center"><Badge variant="outline" className="font-mono">{item.code}</Badge></TableCell>
                       <TableCell className="text-center font-medium">{item.device}</TableCell>
                       <TableCell className="text-center">{item.issue}</TableCell>

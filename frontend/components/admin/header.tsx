@@ -20,6 +20,7 @@ interface NotificationItem {
   description: string
   time: string | null
   type: string
+  entityId?: string | number
 }
 
 interface LoggedInUser {
@@ -257,6 +258,10 @@ export function Header() {
         route = "/repairs?tab=in-progress"
       } else {
         route = "/repairs?tab=requests"
+      }
+
+      if (notification.entityId) {
+        route += `&highlight=${notification.entityId}`
       }
       
       router.push(route)
