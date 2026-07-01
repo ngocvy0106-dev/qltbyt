@@ -557,28 +557,64 @@ router.get("/:id", async (req, res) => {
       return res.status(400).json({ message: "ID không hợp lệ" })
     }
 
-    const [rows] = await pool.query(
-      `SELECT
-         r.id,
-         r.request_code,
-         r.device_id,
-         COALESCE(d.device_name, 'Thiết bị chưa xác định') AS device_name,
-         COALESCE(d.device_code, '-') AS serial_number,
-         r.issue_description,
-         r.reporter_name,
-         r.department_name,
-         r.status,
-         r.request_date,
-         r.assigned_to,
-         r.scheduled_date,
-         r.completion_date,
-         r.repair_notes,
-         r.actual_cost
-       FROM repair_requests r
-       LEFT JOIN devices d ON r.device_id = d.id
-       WHERE r.id = ?`,
-      [id]
-    )
+    // Try multiple query variants for DB schema compatibility
+    const queryVariants = [
+      {
+        query: `SELECT
+           r.id,
+           r.request_code,
+           r.device_id,
+           COALESCE(d.device_name, 'Thiết bị chưa xác định') AS device_name,
+           COALESCE(d.device_code, '-') AS serial_number,
+           r.issue_description,
+           r.reporter_name,
+           r.department_name,
+           r.priority,
+           r.status,
+           r.created_at AS request_date,
+           r.assignee_user_id,
+           COALESCE(u.full_name, '-') AS assigned_to,
+           r.start_date AS scheduled_date,
+           r.completed_date AS completion_date,
+           r.progress_note AS repair_notes,
+           r.cost AS actual_cost
+         FROM repair_requests r
+         LEFT JOIN devices d ON r.device_id = d.id
+         LEFT JOIN users u ON r.assignee_user_id = u.id
+         WHERE r.id = ?`,
+      },
+      {
+        query: `SELECT
+           r.id,
+           r.request_code,
+           r.device_id,
+           COALESCE(d.device_name, 'Thiết bị chưa xác định') AS device_name,
+           COALESCE(d.device_code, '-') AS serial_number,
+           r.issue_description,
+           r.reporter_name,
+           r.department_name,
+           r.status,
+           r.created_at AS request_date,
+           r.assignee_user_id,
+           COALESCE(u.full_name, '-') AS assigned_to
+         FROM repair_requests r
+         LEFT JOIN devices d ON r.device_id = d.id
+         LEFT JOIN users u ON r.assignee_user_id = u.id
+         WHERE r.id = ?`,
+      },
+    ]
+
+    let rows = []
+    for (const variant of queryVariants) {
+      try {
+        const [result] = await pool.query(variant.query, [id])
+        rows = result
+        break
+      } catch (err) {
+        if (err.code === "ER_BAD_FIELD_ERROR") continue
+        throw err
+      }
+    }
 
     if (rows.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu sửa chữa" })
