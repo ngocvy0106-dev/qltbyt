@@ -822,7 +822,11 @@ export function MaintenancePage() {
       const successMessage = nextStatus === "completed" 
         ? "Xác nhận hoàn thành thành công" 
         : "Xác nhận thực hiện thành công"
-      alert(successMessage)
+      toast({
+        description: successMessage,
+        duration: 2000,
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900 rounded-2xl px-4 py-3 shadow-lg",
+      })
       setIsConfirmDialogOpen(false)
       setSelectedConfirmItem(null)
       setConfirmCost("")
