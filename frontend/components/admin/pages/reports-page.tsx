@@ -2051,7 +2051,7 @@ export function ReportsPage() {
                                   </span>
                                 ) : (
                                   <span>
-                                    Bảo trì + thanh lý: {new Intl.NumberFormat("vi-VN").format(Number(item.serviceValueRaw ?? (item.serviceValue ?? item.value ?? 0) * 1000000))} VND
+                                    Bảo trì: {new Intl.NumberFormat("vi-VN").format(Number(item.serviceValueRaw ?? (item.serviceValue ?? item.value ?? 0) * 1000000))} VNĐ
                                   </span>
                                 )}
                               </div>
