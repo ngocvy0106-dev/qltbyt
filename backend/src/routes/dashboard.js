@@ -271,7 +271,8 @@ async function loadRepairMetaByIds(repairIds) {
             r.request_code,
             COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
             COALESCE(d.device_code, '') AS device_code,
-            COALESCE(u.full_name, u.username, '') AS assignee_name
+            COALESCE(u.full_name, u.username, '') AS assignee_name,
+            r.status
      FROM repair_requests r
      LEFT JOIN devices d ON r.device_id = d.id
      LEFT JOIN users u ON r.assignee_user_id = u.id
@@ -280,7 +281,8 @@ async function loadRepairMetaByIds(repairIds) {
             r.request_code,
             COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
             '' AS device_code,
-            COALESCE(u.full_name, u.username, '') AS assignee_name
+            COALESCE(u.full_name, u.username, '') AS assignee_name,
+            r.status
      FROM repair_requests r
      LEFT JOIN devices d ON r.device_id = d.id
      LEFT JOIN users u ON r.assignee_user_id = u.id
@@ -289,7 +291,8 @@ async function loadRepairMetaByIds(repairIds) {
             r.request_code,
             COALESCE(d.device_name, r.device_name, 'Thiết bị') AS device_name,
             '' AS device_code,
-            '' AS assignee_name
+            '' AS assignee_name,
+            r.status
      FROM repair_requests r
      LEFT JOIN devices d ON r.device_id = d.id
      WHERE r.id IN (${placeholders})`,
@@ -332,8 +335,9 @@ async function loadRepairMetaByIds(repairIds) {
     metaMap.set(id, {
       requestCode: String(row.request_code || "").trim() || `RP-${id}`,
       deviceName: String(row.device_name || "").trim() || "Thiết bị",
-      deviceCode: String(row.device_code || "").trim() || "",
-      assigneeName: String(row.assignee_name || "").trim() || "-",
+      deviceCode: String(row.device_code || "").trim(),
+      assigneeName: String(row.assignee_name || "").trim(),
+      status: String(row.status || "").trim(),
     })
   })
 
@@ -694,6 +698,7 @@ async function getRecentActivitiesFromDb(req) {
               type: "repair",
               entityId: repairId,
               action: action,
+              status: repairMeta?.status,
             }
           }
 
@@ -705,6 +710,7 @@ async function getRecentActivitiesFromDb(req) {
             type: "repair",
             entityId: parsedEntityId,
             action: action,
+            status: parsedEntityId > 0 ? repairMetaMap.get(parsedEntityId)?.status : null,
           }
         }
 
