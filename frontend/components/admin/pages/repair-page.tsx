@@ -589,7 +589,14 @@ export function RepairPage() {
     }
 
     loadRepairData()
-  }, [apiBaseUrl, search, loggedInUser.role, loggedInUser.fullName, loggedInUser.username, loggedInUser.id])
+
+    const onRefreshData = () => {
+      void loadRepairData()
+    }
+
+    window.addEventListener("refresh_data", onRefreshData)
+    return () => window.removeEventListener("refresh_data", onRefreshData)
+  }, [apiBaseUrl, search, loggedInUser.role, loggedInUser.fullName, loggedInUser.username, loggedInUser.id, mounted])
 
   useEffect(() => {
     if (!mounted) return

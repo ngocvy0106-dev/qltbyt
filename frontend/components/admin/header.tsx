@@ -212,38 +212,51 @@ export function Header() {
     const appRole = resolveAppRole(String(loggedInUser.role || ""))
     const type = String(notification.type || "").trim().toLowerCase()
 
+    const dispatchRefresh = () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("refresh_data"))
+      }
+    }
+
     // If the current user is an employee, route based on notification type
     if (appRole === "nhan-vien") {
       if (type === "repair") {
         router.push("/repairs")
+        dispatchRefresh()
         return
       }
 
       if (type === "maintenance") {
         router.push("/maintenance")
+        dispatchRefresh()
         return
       }
       router.push("/devices")
+      dispatchRefresh()
       return
     }
 
     // Admin routing based on notification type
     if (type === "transfer") {
       router.push("/transfers?tab=pending")
+      dispatchRefresh()
       return
     }
 
     if (type === "repair") {
       router.push("/repairs")
+      dispatchRefresh()
       return
     }
 
     if (type === "maintenance") {
       router.push("/maintenance")
+      dispatchRefresh()
       return
     }
 
     router.push("/dashboard")
+    dispatchRefresh()
   }
 
   return (
