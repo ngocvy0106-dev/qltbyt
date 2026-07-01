@@ -1663,6 +1663,7 @@ router.get("/maintenance-alerts", async (req, res) => {
             description: `${row.device_name || 'Thiết bị'} • Dự kiến: ${formatNotificationDate(row.scheduled_date) || row.scheduled_date}`,
             time: row.updated_at || row.created_at || row.scheduled_date || null,
             type: 'maintenance',
+            entityId: row.id,
           })
         }
       }
