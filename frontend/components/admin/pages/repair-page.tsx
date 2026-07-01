@@ -406,13 +406,27 @@ export function RepairPage() {
         setItems(itemsRes)
         setSummary(summaryRes)
       }
-    } catch {
+    } catch (error) {
+      console.error("Error fetching repairs:", error)
       setItems([])
       setSummary({ pending: 0, inProgress: 0, completedThisMonth: 0 })
     } finally {
       setIsLoading(false)
     }
   }
+
+  // Auto-switch tab if the highlighted row is loaded in a different tab
+  useEffect(() => {
+    if (highlightedRowId) {
+      if (requestItems.some((i) => i.id === highlightedRowId)) {
+        setActiveTab("requests")
+      } else if (inProgressItems.some((i) => i.id === highlightedRowId)) {
+        setActiveTab("in-progress")
+      } else if (historyItems.some((i) => i.id === highlightedRowId)) {
+        setActiveTab("history")
+      }
+    }
+  }, [highlightedRowId, requestItems, inProgressItems, historyItems])
 
   const loadDialogOptions = async () => {
     try {
