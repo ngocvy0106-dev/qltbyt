@@ -570,6 +570,7 @@ router.get("/:id", async (req, res) => {
          COALESCE(d.device_code, t.serial_number, '-') AS serial_number,
          t.from_department,
          t.to_department,
+         t.to_location,
          t.request_date,
          t.requester_name,
          t.transfer_reason,
@@ -584,7 +585,12 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu" })
     }
 
-    return res.json(rows[0])
+    const row = rows[0]
+    const decoded = decodeReasonAndLocation(row.transfer_reason, row.to_location)
+    row.transfer_reason = decoded.reason
+    row.to_location = decoded.toLocation
+
+    return res.json(row)
   } catch (error) {
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
   }
