@@ -1460,7 +1460,7 @@ router.get("/maintenance-alerts", async (req, res) => {
     try {
       const repairStatusCondition = isAdmin
         ? `r.status IN ('pending', 'cho xu ly')`
-        : `r.status IN ('assigned', 'da phan cong')`
+        : `r.status IN ('assigned', 'da phan cong', 'completed', 'hoan thanh')`
 
       const queryVariants = [
         `SELECT

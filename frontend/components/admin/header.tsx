@@ -212,6 +212,10 @@ export function Header() {
     const appRole = resolveAppRole(String(loggedInUser.role || ""))
     const type = String(notification.type || "").trim().toLowerCase()
 
+    if (type === "none") {
+      return
+    }
+
     const dispatchRefresh = () => {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("refresh_data"))
@@ -244,8 +248,19 @@ export function Header() {
     }
 
     if (type === "repair") {
-      router.push("/repairs")
-      dispatchRefresh()
+      const title = normalizeText(String(notification.title || ""))
+      let route = "/repairs"
+      
+      if (title.includes("hoan thanh")) {
+        route = "/repairs?tab=history"
+      } else if (title.includes("xac nhan")) {
+        route = "/repairs?tab=in-progress"
+      } else {
+        route = "/repairs?tab=requests"
+      }
+      
+      router.push(route)
+      setTimeout(() => dispatchRefresh(), 50)
       return
     }
 
