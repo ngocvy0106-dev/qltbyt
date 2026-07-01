@@ -1582,13 +1582,6 @@ router.get("/maintenance-alerts", async (req, res) => {
         }
 
         let title = `Yêu cầu sửa chữa ${requestCode}`
-        if (normalizedRepairStatus === "completed") {
-          title += " (Hoàn thành)"
-        } else if (normalizedRepairStatus === "in_progress") {
-          title += " (Đang sửa)"
-        } else {
-          title += " (Đã phân công)"
-        }
 
         notifications.push({
           id: `repair-${row.id}`,
