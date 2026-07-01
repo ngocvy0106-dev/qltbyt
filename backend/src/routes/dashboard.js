@@ -582,6 +582,9 @@ async function getRecentActivitiesFromDb() {
           const transferMeta = transferMetaMap.get(transferId)
           const transferCode = transferMeta?.serial || transferMeta?.requestCode || extractTransferSerial(entityName)
           const transferType = resolveRequestType(transferMeta?.reason || entityName, transferMeta?.requestCode)
+          if (action === "transfer.create" && transferType === "allocation") {
+            return null
+          }
           const deviceName = transferMeta?.deviceName || "Thiết bị"
           const shortTime = item.created_at ? formatShortDateTime(item.created_at) : ""
           const transferTypeLabel = transferType === "allocation" ? "Cấp phát" : "Điều chuyển"
