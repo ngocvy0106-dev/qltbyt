@@ -573,7 +573,6 @@ router.get("/:id", async (req, res) => {
            r.status,
            r.created_at AS request_date,
            r.assignee_user_id,
-           r.created_by_user_id,
            COALESCE(u.full_name, '-') AS assigned_to,
            r.start_date AS scheduled_date,
            r.completed_date AS completion_date,
@@ -597,7 +596,6 @@ router.get("/:id", async (req, res) => {
            r.status,
            r.created_at AS request_date,
            r.assignee_user_id,
-           r.created_by_user_id,
            COALESCE(u.full_name, '-') AS assigned_to
          FROM repair_requests r
          LEFT JOIN devices d ON r.device_id = d.id
@@ -621,8 +619,22 @@ router.get("/:id", async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy yêu cầu sửa chữa" })
     }
+    
+    let row = rows[0]
+    
+    // Resolve created_by_user_id from reporter_name if missing from table
+    if (row.reporter_name && row.created_by_user_id === undefined) {
+      try {
+        const found = await findUserByName(row.reporter_name)
+        if (found) {
+          row.created_by_user_id = Number(found.id || 0) || null
+        }
+      } catch (e) {
+        // Ignore error
+      }
+    }
 
-    return res.json(rows[0])
+    return res.json(row)
   } catch (error) {
     return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
   }
