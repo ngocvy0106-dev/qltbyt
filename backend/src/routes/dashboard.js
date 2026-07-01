@@ -591,7 +591,7 @@ async function getRecentActivitiesFromDb() {
           const serialLabel = transferCode ? ` [${transferCode}]` : ""
           const transferLabel = `${transferTypeLabel} thiết bị ${deviceName}${serialLabel}`
 
-          if (action === "transfer.assign-device") {
+          if (transferType === "allocation" && (action === "transfer.assign-device" || action === "transfer.approved")) {
             return {
               title: "Điều chuyển - Cấp phát",
               desc: shortTime
