@@ -1664,6 +1664,7 @@ router.get("/maintenance-alerts", async (req, res) => {
             time: row.updated_at || row.created_at || row.scheduled_date || null,
             type: 'maintenance',
             entityId: row.id,
+            status: normalizedStatus,
           })
         }
       }
