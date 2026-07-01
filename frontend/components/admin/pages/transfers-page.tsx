@@ -198,18 +198,29 @@ export function TransfersPage() {
     window.dispatchEvent(new Event("devices-data-changed"))
   }
 
-  const [highlightedRowId, setHighlightedRowId] = useState<number | null>(null)
+  const [highlightedRowIds, setHighlightedRowIds] = useState<number[]>([])
 
   useEffect(() => {
     const highlightId = searchParams.get("highlight")
-    if (highlightId) {
-      setHighlightedRowId(Number(highlightId))
+    if (highlightId && transferItems.length > 0) {
+      const targetId = Number(highlightId)
+      const targetItem = transferItems.find((i) => i.id === targetId)
+
+      if (targetItem && targetItem.code) {
+        const matchingIds = transferItems
+          .filter((i) => i.code === targetItem.code)
+          .map((i) => i.id)
+        setHighlightedRowIds(matchingIds)
+      } else {
+        setHighlightedRowIds([targetId])
+      }
+
       const timer = setTimeout(() => {
-        setHighlightedRowId(null)
+        setHighlightedRowIds([])
       }, 3000)
       return () => clearTimeout(timer)
     }
-  }, [searchParams])
+  }, [searchParams, transferItems])
 
   useEffect(() => {
     const tabParam = String(searchParams.get("tab") || "").trim().toLowerCase()
@@ -1559,7 +1570,7 @@ export function TransfersPage() {
                 )}
 
                 {!isLoading && filteredTransfers.map((item) => (
-                  <tr key={item.id} className={`border-b border-border/60 hover:bg-secondary/40 transition-all duration-1000 ${highlightedRowId === item.id ? "bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]" : ""}`}>
+                  <tr key={item.id} className={`border-b border-border/60 hover:bg-secondary/40 transition-all duration-1000 ${highlightedRowIds.includes(item.id) ? "bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]" : ""}`}>
                     <td className="px-4 py-4 text-sm font-semibold text-foreground">{item.code}</td>
                     <td className="px-4 py-4">
                       <div>
