@@ -770,7 +770,7 @@ async function getRecentActivitiesFromDb(req) {
   return []
 }
 
-router.get("/overview", async (_, res) => {
+router.get("/overview", async (req, res) => {
   try {
     const queryVariants = [
       `SELECT id, device_name, status, updated_at, warranty_expiry, \`value\` AS device_value
