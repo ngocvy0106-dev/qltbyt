@@ -588,11 +588,23 @@ async function getRecentActivitiesFromDb() {
           const serialLabel = transferCode ? ` [${transferCode}]` : ""
           const transferLabel = `${transferTypeLabel} thiết bị ${deviceName}${serialLabel}`
 
+          let displayTitle = "Điều chuyển - Cấp phát"
+          let displayDesc = shortTime
+            ? `${roleName} [${fullName}] - ${transferLabel} - ${shortTime}`
+            : `${roleName} [${fullName}] - ${transferLabel}`
+
+          if (action === "transfer.create") {
+            displayTitle = transferType === "allocation"
+              ? `Yêu cầu cấp phát thiết bị ${transferMeta?.requestCode || ""}`.trim()
+              : `Yêu cầu điều chuyển thiết bị ${transferMeta?.requestCode || ""}`.trim()
+            
+            displayDesc = `${deviceName} • ${fullName}`
+            if (shortTime) displayDesc += ` - ${shortTime}`
+          }
+
           return {
-            title: "Điều chuyển - Cấp phát",
-            desc: shortTime
-              ? `${roleName} [${fullName}] - ${transferLabel} - ${shortTime}`
-              : `${roleName} [${fullName}] - ${transferLabel}`,
+            title: displayTitle,
+            desc: displayDesc,
             type: "transfer",
             entityId: transferId,
             action: action,
