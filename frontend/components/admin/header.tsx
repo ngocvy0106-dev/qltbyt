@@ -241,18 +241,9 @@ export function Header() {
         return
       }
       if (type === "transfer") {
-        const title = normalizeText(String(notification.title || ""))
-        let route = "/transfers"
-        if (title.includes("tu choi")) {
-          route = "/transfers?tab=rejected"
-        } else if (title.includes("duoc duyet") || title.includes("da duoc duyet")) {
-          route = "/transfers?tab=approved"
-        } else {
-          route = "/transfers?tab=pending"
-        }
-
+        let route = "/transfers?tab=all"
         if (notification.entityId) {
-          route += (route.includes("?") ? "&" : "?") + `highlight=${notification.entityId}`
+          route += `&highlight=${notification.entityId}`
         }
 
         router.push(route)
@@ -267,7 +258,7 @@ export function Header() {
 
     // Admin routing based on notification type
     if (type === "transfer") {
-      let route = "/transfers?tab=pending"
+      let route = "/transfers?tab=all"
       if (notification.entityId) {
         route += `&highlight=${notification.entityId}`
       }
@@ -277,23 +268,12 @@ export function Header() {
     }
 
     if (type === "repair") {
-      const title = normalizeText(String(notification.title || ""))
       let route = "/repairs"
-      
-      if (title.includes("hoan thanh")) {
-        route = "/repairs?tab=history"
-      } else if (title.includes("xac nhan")) {
-        route = "/repairs?tab=in-progress"
-      } else {
-        route = "/repairs?tab=requests"
-      }
-
       if (notification.entityId) {
-        route += `&highlight=${notification.entityId}`
+        route += `?highlight=${notification.entityId}`
       }
-      
       router.push(route)
-      setTimeout(() => dispatchRefresh(), 50)
+      dispatchRefresh()
       return
     }
 
