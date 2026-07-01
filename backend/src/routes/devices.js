@@ -1576,14 +1576,12 @@ router.get("/maintenance-alerts", async (req, res) => {
           return
         }
 
-        const isCompleted = ["completed", "hoan thanh"].includes(normalizedRepairStatus)
-
         notifications.push({
           id: `repair-${row.id}`,
           title: `Yêu cầu ${requestCode} đã được admin duyệt`,
           description: `${row.device_name || "Thiết bị"} • Người yêu cầu: ${row.reporter_name || "-"}`,
           time: row.updated_at || row.created_at || null,
-          type: isCompleted ? "none" : "repair",
+          type: "repair",
           entityId: row.id,
         })
         return
