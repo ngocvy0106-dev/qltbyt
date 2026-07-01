@@ -226,7 +226,11 @@ export function Header() {
     // If the current user is an employee, route based on notification type
     if (appRole === "nhan-vien") {
       if (type === "repair") {
-        router.push("/repairs")
+        let route = "/repairs"
+        if (notification.entityId) {
+          route += `?highlight=${notification.entityId}`
+        }
+        router.push(route)
         dispatchRefresh()
         return
       }

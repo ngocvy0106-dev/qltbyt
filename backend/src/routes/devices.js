@@ -1565,6 +1565,7 @@ router.get("/maintenance-alerts", async (req, res) => {
           description: `${row.device_name || "Thiết bị"} • ${row.reporter_name || "Người dùng hệ thống"}`,
           time: row.created_at || null,
           type: "repair",
+          entityId: row.id,
         })
         return
       }
@@ -1585,6 +1586,7 @@ router.get("/maintenance-alerts", async (req, res) => {
           description: `${row.device_name || "Thiết bị"} • Người yêu cầu: ${row.reporter_name || "-"}`,
           time: row.updated_at || row.created_at || null,
           type: "repair",
+          entityId: row.id,
         })
         return
       }
