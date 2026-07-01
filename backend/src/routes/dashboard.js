@@ -351,7 +351,6 @@ function extractImportBatchDetail(description, roleName, fullName) {
 
 async function getRecentActivitiesFromDb() {
   const excludedActions = new Set([
-    "repair.request",
     "repair.employee_confirmed",
     "maintenance.confirm",
     "maintenance.employee_confirmed",
@@ -364,7 +363,7 @@ async function getRecentActivitiesFromDb() {
      FROM activity a
      LEFT JOIN users u ON a.user_id = u.id
      LEFT JOIN role r ON u.role_id = r.id
-    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.create', 'repair.request', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
+    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
       AND (r.role_name = 'Admin' OR r.role_name IS NULL)
       AND a.created_at >= DATE_SUB(NOW(), INTERVAL 3 DAY)
      ORDER BY a.id DESC`,
@@ -374,7 +373,7 @@ async function getRecentActivitiesFromDb() {
      FROM activity a
      LEFT JOIN users u ON a.user_id = u.id
      LEFT JOIN role r ON u.role_id = r.id
-    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.create', 'repair.request', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
+    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
       AND (r.role_name = 'Admin' OR r.role_name IS NULL)
       AND a.created_at >= DATE_SUB(NOW(), INTERVAL 3 DAY)
      ORDER BY a.id DESC`,
@@ -405,7 +404,7 @@ async function getRecentActivitiesFromDb() {
         if (excludedActions.has(String(item.action_name || "").trim())) return false;
         
         const action = String(item.action_name || "").trim();
-        const qrRelatedActions = ['transfer.create', 'transfer.approved', 'maintenance.create', 'repair.create', 'repair.assign', 'device.update'];
+        const qrRelatedActions = ['transfer.create', 'transfer.approved', 'maintenance.create', 'repair.create', 'repair.request', 'repair.assign', 'device.update'];
         
         if (qrRelatedActions.includes(action)) {
            for (let i = Math.max(0, index - 10); i <= Math.min(array.length - 1, index + 10); i++) {
@@ -428,6 +427,7 @@ async function getRecentActivitiesFromDb() {
                                "device.update": "Cập nhật",
                                "maintenance.create": "Tạo lịch bảo trì",
                                "repair.create": "Tạo yêu cầu sửa chữa",
+                               "repair.request": "Tạo yêu cầu sửa chữa",
                                "repair.assign": "Tạo yêu cầu sửa chữa"
                            };
                            actionLabel = actionLabelMap[action] || "thao tác";
@@ -504,6 +504,8 @@ async function getRecentActivitiesFromDb() {
           "transfer.rejected": "Từ chối",
           "transfer.delete": "Xóa",
           "maintenance.create": "Tạo",
+          "repair.create": "Yêu cầu sửa chữa",
+          "repair.request": "Yêu cầu sửa chữa",
           "repair.approve": "Duyệt",
           "repair.assign": "Phân công",
           "repair.start": "Bắt đầu",
