@@ -445,7 +445,7 @@ async function getRecentActivitiesFromDb() {
         return true;
       });
 
-      return filteredRows.map((item) => {
+      return filteredRows.map((item) => {\n        const parsedEntityId = Number(item.entity_id || 0);
         const action = String(item.action_name || "").trim() || "activity"
         let entityName = String(item.description || "").trim() || "Không có mô tả"
         

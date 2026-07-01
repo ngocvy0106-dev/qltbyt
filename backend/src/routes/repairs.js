@@ -550,6 +550,46 @@ router.get("/", async (req, res) => {
   }
 })
 
+router.get("/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "ID không hợp lệ" })
+    }
+
+    const [rows] = await pool.query(
+      `SELECT
+         r.id,
+         r.request_code,
+         r.device_id,
+         COALESCE(d.device_name, 'Thiết bị chưa xác định') AS device_name,
+         COALESCE(d.device_code, '-') AS serial_number,
+         r.issue_description,
+         r.reporter_name,
+         r.department_name,
+         r.status,
+         r.request_date,
+         r.assigned_to,
+         r.scheduled_date,
+         r.completion_date,
+         r.repair_notes,
+         r.actual_cost
+       FROM repairs r
+       LEFT JOIN devices d ON r.device_id = d.id
+       WHERE r.id = ?`,
+      [id]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Không tìm thấy yêu cầu sửa chữa" })
+    }
+
+    return res.json(rows[0])
+  } catch (error) {
+    return res.status(500).json({ message: "Lỗi server", detail: String(error.message || error) })
+  }
+})
+
 router.post("/", async (req, res) => {
   try {
     const actorUserId = resolveActorUserId(req)
