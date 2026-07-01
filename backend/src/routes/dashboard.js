@@ -180,13 +180,13 @@ async function loadTransferMetaByIds(transferIds) {
 
   const placeholders = ids.map(() => "?").join(", ")
   const queryVariants = [
-    `SELECT id, request_code, device_name, serial_number, transfer_reason
+    `SELECT id, request_code, device_name, serial_number, transfer_reason, status
      FROM device_transfers
      WHERE id IN (${placeholders})`,
-    `SELECT id, request_code, device_name, serial_number
+    `SELECT id, request_code, device_name, serial_number, status
      FROM device_transfers
      WHERE id IN (${placeholders})`,
-    `SELECT id, request_code, device_name
+    `SELECT id, request_code, device_name, status
      FROM device_transfers
      WHERE id IN (${placeholders})`,
   ]
@@ -230,6 +230,7 @@ async function loadTransferMetaByIds(transferIds) {
       deviceName: String(row.device_name || "").trim() || "Thiết bị",
       serial: String(row.serial_number || "").trim() || null,
       reason: String(row.transfer_reason || "").trim() || null,
+      status: String(row.status || "").trim(),
     })
   })
 
@@ -595,6 +596,7 @@ async function getRecentActivitiesFromDb() {
             type: "transfer",
             entityId: transferId,
             action: action,
+            status: transferMeta?.status,
           }
         }
 
