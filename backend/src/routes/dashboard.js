@@ -476,6 +476,8 @@ async function getRecentActivitiesFromDb() {
           "transfer.delete": "Xóa Yêu cầu điều chuyển",
           "maintenance.create": "Bảo trì",
           "maintenance.delete": "Bảo trì",
+          "repair.request": "Yêu cầu sửa chữa",
+          "repair.create": "Yêu cầu sửa chữa",
           "repair.approve": "Duyệt Yêu cầu sửa chữa",
           "repair.assign": "Phân công Sửa chữa",
           "repair.start": "Bắt đầu Sửa chữa",
