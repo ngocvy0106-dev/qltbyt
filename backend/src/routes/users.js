@@ -414,7 +414,10 @@ router.get("/activity-logs", async (req, res) => {
     if (transferIds.length) {
       const placeholders = transferIds.map(() => "?").join(", ")
       const transferQueries = [
-        `SELECT id, device_name, transfer_reason
+        `SELECT id, device_name, transfer_reason, request_code
+         FROM device_transfers
+         WHERE id IN (${placeholders})`,
+        `SELECT id, device_name, request_code
          FROM device_transfers
          WHERE id IN (${placeholders})`,
         `SELECT id, device_name
@@ -434,6 +437,7 @@ router.get("/activity-logs", async (req, res) => {
             transferMetaMap.set(transferId, {
               deviceName: String(item.device_name || "").trim() || "Thiết bị",
               reason: String(item.transfer_reason || "").trim() || null,
+              requestCode: String(item.request_code || "").trim() || null,
             })
           })
           break
@@ -461,13 +465,18 @@ router.get("/activity-logs", async (req, res) => {
           const transferId = Number(row.entity_id || 0)
           const transferMeta = transferMetaMap.get(transferId)
           if (transferMeta) {
-            const reasonText = String(transferMeta.reason || "")
-              .trim()
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/đ/g, "d")
-            const isAllocation = reasonText.includes("cap phat") || reasonText.includes("yeu cau cap phat")
+            let isAllocation = false
+            if (transferMeta.requestCode) {
+              isAllocation = transferMeta.requestCode.startsWith("CP")
+            } else {
+              const reasonText = String(transferMeta.reason || "")
+                .trim()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/đ/g, "d")
+              isAllocation = reasonText.includes("cap phat") || reasonText.includes("yeu cau cap phat")
+            }
             description = isAllocation
               ? `Yêu cầu cấp phát thiết bị ${transferMeta.deviceName}`
               : `Yêu cầu điều chuyển thiết bị ${transferMeta.deviceName}`
