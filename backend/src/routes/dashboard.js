@@ -530,6 +530,8 @@ async function getRecentActivitiesFromDb() {
             desc: shortTime
               ? `${roleName} [${fullName}] - ${entityName} - ${shortTime}`
               : `${roleName} [${fullName}] - ${entityName}`,
+            type: "maintenance",
+            entityId: parsedEntityId,
           }
         }
 
@@ -587,6 +589,8 @@ async function getRecentActivitiesFromDb() {
             desc: shortTime
               ? `${roleName} [${fullName}] - ${transferLabel} - ${shortTime}`
               : `${roleName} [${fullName}] - ${transferLabel}`,
+            type: "transfer",
+            entityId: transferId,
           }
         }
 
@@ -624,6 +628,8 @@ async function getRecentActivitiesFromDb() {
             return {
               title: titleLabel,
               desc: shortTime ? `${formatted} - ${shortTime}` : formatted,
+              type: "repair",
+              entityId: repairId,
             }
           }
 
@@ -632,6 +638,8 @@ async function getRecentActivitiesFromDb() {
             desc: shortTime
               ? `${roleName} [${fullName}] - ${entityName} - ${shortTime}`
               : `${roleName} [${fullName}] - ${entityName}`,
+            type: "repair",
+            entityId: parsedEntityId,
           }
         }
 
