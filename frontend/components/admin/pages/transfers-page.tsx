@@ -132,6 +132,7 @@ const statusBadges: Record<Exclude<TransferStatus, "all">, React.ReactNode> = {
 }
 
 export function TransfersPage() {
+  const { toast } = useToast()
   const searchParams = useSearchParams()
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
   const [pageTab, setPageTab] = useState<TransferPageTab>("requests")
@@ -1320,11 +1321,13 @@ export function TransfersPage() {
         }
       }
 
-      alert(
-        isAdminUser
+      toast({
+        description: isAdminUser
           ? `Đã cấp phát ${selectedDevices.length} thiết bị thành công`
-          : `Đã gửi ${selectedDevices.length} yêu cầu cấp phát để admin duyệt`
-      )
+          : `Đã gửi ${selectedDevices.length} yêu cầu cấp phát để admin duyệt`,
+        duration: 2000,
+        className: "border-emerald-200 bg-emerald-50 text-emerald-900 rounded-2xl px-4 py-3 shadow-lg",
+      })
       setIsCreateTransferDialogOpen(false)
       setPageTab("requests")
       setActiveTab(isAdminUser ? "approved" : "pending")
