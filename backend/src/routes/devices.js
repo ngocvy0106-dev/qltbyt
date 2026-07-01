@@ -1762,9 +1762,10 @@ router.get("/maintenance-alerts", async (req, res) => {
                           a.id,
                           a.description,
                           a.entity_id,
-                          a.created_at
+                          a.created_at,
+                          a.action
                         FROM activity a
-                        WHERE a.action = 'repair.employee_confirmed'
+                        WHERE a.action IN ('repair.employee_confirmed', 'repair.employee_completed')
                           AND (a.user_id = ? OR a.user_id IS NULL)
                         ORDER BY a.created_at DESC
                         LIMIT 20`,
@@ -1775,9 +1776,10 @@ router.get("/maintenance-alerts", async (req, res) => {
                           a.id,
                           a.description,
                           a.entity_id,
-                          a.created_at
+                          a.created_at,
+                          a.action
                         FROM activity a
-                        WHERE a.action = 'repair.employee_confirmed'
+                        WHERE a.action IN ('repair.employee_confirmed', 'repair.employee_completed')
                         ORDER BY a.created_at DESC
                         LIMIT 20`,
                 params: [],
@@ -1789,9 +1791,10 @@ router.get("/maintenance-alerts", async (req, res) => {
                           a.id,
                           a.description,
                           a.entity_id,
-                          a.created_at
+                          a.created_at,
+                          a.action
                         FROM activity a
-                        WHERE a.action = 'repair.employee_confirmed'
+                        WHERE a.action IN ('repair.employee_confirmed', 'repair.employee_completed')
                         ORDER BY a.created_at DESC
                         LIMIT 20`,
                 params: [],
@@ -1822,10 +1825,11 @@ router.get("/maintenance-alerts", async (req, res) => {
         }
 
         repairConfirmRows.forEach((row) => {
+          const isCompleted = row.action === 'repair.employee_completed'
           notifications.push({
             id: `repair-confirm-${row.id}`,
-            title: "Nhân viên xác nhận sửa chữa",
-            description: row.description || "Nhân viên vừa xác nhận sửa chữa",
+            title: isCompleted ? "Nhân viên hoàn thành sửa chữa" : "Nhân viên xác nhận sửa chữa",
+            description: row.description || (isCompleted ? "Nhân viên vừa hoàn thành sửa chữa" : "Nhân viên vừa xác nhận sửa chữa"),
             time: row.created_at || null,
             type: "repair",
           })
