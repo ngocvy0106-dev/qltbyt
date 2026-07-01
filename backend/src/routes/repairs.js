@@ -1285,6 +1285,12 @@ router.put("/:id/confirm", async (req, res) => {
       console.warn("[WARN] Failed to send admin notifications for employee repair confirm:", String(adminNotificationErr.message || adminNotificationErr))
     }
 
+    try {
+      emitRepairEvent({ id, status: "in_progress", assigneeUserId: actorUserId })
+    } catch (eventError) {
+      console.warn("[WARN] Failed to emit repair event for confirm:", String(eventError))
+    }
+
     return res.json({ ok: true, status: "in_progress" })
   } catch (error) {
     if (error.code === "ER_NO_SUCH_TABLE") {
@@ -1804,6 +1810,12 @@ router.put("/:id/complete", async (req, res) => {
       }
     } catch (adminNotificationErr) {
       console.warn("[WARN] Failed to send admin notifications for employee repair complete:", String(adminNotificationErr.message || adminNotificationErr))
+    }
+
+    try {
+      emitRepairEvent({ id, status: "completed", assigneeUserId: actorUserId })
+    } catch (eventError) {
+      console.warn("[WARN] Failed to emit repair event for complete:", String(eventError))
     }
 
     return res.json({ ok: true, status: "completed", completedTime: completedAtIso })
