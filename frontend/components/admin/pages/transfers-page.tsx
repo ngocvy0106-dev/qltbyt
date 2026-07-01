@@ -2006,7 +2006,11 @@ export function TransfersPage() {
                     // Approve the transfer (this will apply changes to the device on server)
                     await handleUpdateTransferStatus(selectedTransfer, "approved")
                     setIsApproveDialogOpen(false)
-                    toast({ description: `Đã duyệt yêu cầu ${selectedTransfer.code}` })
+                    toast({
+                      description: `Đã duyệt yêu cầu ${selectedTransfer.code}`,
+                      duration: 2000,
+                      className: "border-emerald-200 bg-emerald-50 text-emerald-900 rounded-2xl px-4 py-3 shadow-lg",
+                    })
                   } catch (e) {
                     alert("Không thể duyệt yêu cầu")
                   } finally {
