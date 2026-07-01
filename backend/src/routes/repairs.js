@@ -573,6 +573,7 @@ router.get("/:id", async (req, res) => {
            r.status,
            r.created_at AS request_date,
            r.assignee_user_id,
+           r.created_by_user_id,
            COALESCE(u.full_name, '-') AS assigned_to,
            r.start_date AS scheduled_date,
            r.completed_date AS completion_date,
@@ -596,6 +597,7 @@ router.get("/:id", async (req, res) => {
            r.status,
            r.created_at AS request_date,
            r.assignee_user_id,
+           r.created_by_user_id,
            COALESCE(u.full_name, '-') AS assigned_to
          FROM repair_requests r
          LEFT JOIN devices d ON r.device_id = d.id
