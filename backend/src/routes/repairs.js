@@ -1766,6 +1766,11 @@ router.put("/:id/complete", async (req, res) => {
            LIMIT 100`,
           `SELECT u.id, u.full_name
            FROM users u
+           LEFT JOIN role r ON u.role_id = r.id
+           WHERE LOWER(COALESCE(r.role_name, '')) IN ('admin', 'quan tri vien', 'quản trị viên', 'administrator')
+           LIMIT 100`,
+          `SELECT u.id, u.full_name
+           FROM users u
            WHERE LOWER(COALESCE(u.role, '')) LIKE '%admin%'
            LIMIT 100`,
         ]
