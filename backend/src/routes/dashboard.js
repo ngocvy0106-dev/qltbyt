@@ -364,8 +364,8 @@ async function getRecentActivitiesFromDb() {
      FROM activity a
      LEFT JOIN users u ON a.user_id = u.id
      LEFT JOIN role r ON u.role_id = r.id
-    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
-      AND (r.role_name = 'Admin' OR r.role_name IS NULL OR a.\`action\` IN ('repair.request', 'transfer.create'))
+     WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
+       AND (r.role_name = 'Admin' OR r.role_name IS NULL OR a.\`action\` LIKE 'transfer.%' OR a.\`action\` = 'repair.request')
       AND a.created_at >= DATE_SUB(NOW(), INTERVAL 3 DAY)
      ORDER BY a.id DESC`,
         `SELECT a.id, a.\`action\` AS action_name, a.description, a.entity_type, a.entity_id, a.created_at,
@@ -374,8 +374,8 @@ async function getRecentActivitiesFromDb() {
      FROM activity a
      LEFT JOIN users u ON a.user_id = u.id
      LEFT JOIN role r ON u.role_id = r.id
-    WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
-      AND (r.role_name = 'Admin' OR r.role_name IS NULL OR a.\`action\` IN ('repair.request', 'transfer.create'))
+     WHERE a.\`action\` NOT IN ('device.import_item', 'user.login', 'user.logout', 'repair.employee_confirmed', 'maintenance.confirm', 'maintenance.employee_confirmed')
+       AND (r.role_name = 'Admin' OR r.role_name IS NULL OR a.\`action\` LIKE 'transfer.%' OR a.\`action\` = 'repair.request')
       AND a.created_at >= DATE_SUB(NOW(), INTERVAL 3 DAY)
      ORDER BY a.id DESC`,
   ]
