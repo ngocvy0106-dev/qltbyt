@@ -132,7 +132,6 @@ const statusBadges: Record<Exclude<TransferStatus, "all">, React.ReactNode> = {
 }
 
 export function TransfersPage() {
-  const { toast } = useToast()
   const searchParams = useSearchParams()
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
   const [pageTab, setPageTab] = useState<TransferPageTab>("requests")
