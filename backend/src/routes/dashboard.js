@@ -86,6 +86,28 @@ function resolveRequestType(reasonText, requestCode) {
   return "transfer"
 }
 
+function isWebDashboardRequest(req) {
+  const origin = String(req?.get?.("origin") || req?.headers?.origin || "")
+    .trim()
+    .toLowerCase()
+  const referer = String(req?.get?.("referer") || req?.headers?.referer || "")
+    .trim()
+    .toLowerCase()
+
+  if (!origin && !referer) {
+    return false
+  }
+
+  return (
+    origin.includes("vercel.app") ||
+    origin.includes("localhost:3000") ||
+    origin.includes("127.0.0.1:3000") ||
+    referer.includes("vercel.app") ||
+    referer.includes("localhost:3000") ||
+    referer.includes("127.0.0.1:3000")
+  )
+}
+
 function formatCurrencyVnd(value) {
   const amount = Number(value || 0)
   return `${new Intl.NumberFormat("vi-VN").format(amount)} VND`
@@ -350,12 +372,13 @@ function extractImportBatchDetail(description, roleName, fullName) {
   return text
 }
 
-async function getRecentActivitiesFromDb() {
+async function getRecentActivitiesFromDb(req) {
   const excludedActions = new Set([
     "repair.employee_confirmed",
     "maintenance.confirm",
     "maintenance.employee_confirmed",
   ])
+  const hideAllocationTransfers = isWebDashboardRequest(req)
 
   const queryVariants = [
         `SELECT a.id, a.\`action\` AS action_name, a.description, a.entity_type, a.entity_id, a.created_at,
@@ -582,7 +605,11 @@ async function getRecentActivitiesFromDb() {
           const transferMeta = transferMetaMap.get(transferId)
           const transferCode = transferMeta?.serial || transferMeta?.requestCode || extractTransferSerial(entityName)
           const transferType = resolveRequestType(transferMeta?.reason || entityName, transferMeta?.requestCode)
-          if (action === "transfer.create" && transferType === "allocation") {
+          if (
+            hideAllocationTransfers &&
+            action === "transfer.create" &&
+            transferType === "allocation"
+          ) {
             return null
           }
           const deviceName = transferMeta?.deviceName || "Thiết bị"
@@ -866,7 +893,7 @@ router.get("/overview", async (_, res) => {
         date: formatDate(device.updatedAt),
       }))
 
-    const recentActivitiesFromDb = await getRecentActivitiesFromDb()
+    const recentActivitiesFromDb = await getRecentActivitiesFromDb(req)
     const recentActivities = recentActivitiesFromDb
 
     return res.json({
