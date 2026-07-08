@@ -185,6 +185,7 @@ type LoggedInUser = {
   role?: string
   departmentName?: string | null
   department?: string | null
+  permissions?: string[]
 }
 
 const colorValueByClass: Record<string, string> = {
@@ -341,7 +342,7 @@ export function ReportsPage() {
   const [costByMonth, setCostByMonth] = useState<ChartPoint[]>([])
   const [deviceCategoryShare, setDeviceCategoryShare] = useState<CategorySharePoint[]>([])
   const [inventorySummary, setInventorySummary] = useState<InventorySummaryItem[]>([])
-  const [liquidatedSummary, setLiquidatedSummary] = useState<{quantity: number, totalValue: number}>({quantity: 0, totalValue: 0})
+  const [liquidatedSummary, setLiquidatedSummary] = useState<{ quantity: number, totalValue: number }>({ quantity: 0, totalValue: 0 })
   const [deviceActivityLogs, setDeviceActivityLogs] = useState<DeviceActivityLogItem[]>([])
   const [deviceStockMovements, setDeviceStockMovements] = useState<DeviceStockMovementItem[]>([])
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -773,8 +774,8 @@ export function ReportsPage() {
 
     const maintenanceInProgressRowsHtml = maintenanceInProgressLogs.length
       ? maintenanceInProgressLogs
-          .map(
-            (item) => `
+        .map(
+          (item) => `
               <tr>
                 <td>${escapeHtml(formatDateTime(item.updatedAt))}</td>
                 <td>${escapeHtml(item.deviceName)}</td>
@@ -782,14 +783,14 @@ export function ReportsPage() {
                 <td>${escapeHtml(extractTechnicianFromContent(item.content))}</td>
                 <td>${escapeHtml(getDeviceActivityStatusLabel(item))}</td>
               </tr>`,
-          )
-          .join("")
+        )
+        .join("")
       : `<tr><td colspan="5" class="no-data">Không có thiết bị đang bảo trì</td></tr>`
 
     const maintenanceCompletedRowsHtml = maintenanceCompletedLogs.length
       ? maintenanceCompletedLogs
-          .map(
-            (item) => `
+        .map(
+          (item) => `
               <tr>
                 <td>${escapeHtml(formatDateTime(item.updatedAt))}</td>
                 <td>${escapeHtml(item.deviceName)}</td>
@@ -797,14 +798,14 @@ export function ReportsPage() {
                 <td>${escapeHtml(extractTechnicianFromContent(item.content))}</td>
                 <td>${escapeHtml(getDeviceActivityStatusLabel(item))}</td>
               </tr>`,
-          )
-          .join("")
+        )
+        .join("")
       : `<tr><td colspan="5" class="no-data">Không có thiết bị đã bảo trì</td></tr>`
 
     const repairRowsHtml = repairLogs.length
       ? repairLogs
-          .map(
-            (item) => `
+        .map(
+          (item) => `
               <tr>
                 <td>${escapeHtml(formatDateTime(item.updatedAt))}</td>
                 <td>${escapeHtml(item.deviceName)}</td>
@@ -812,8 +813,8 @@ export function ReportsPage() {
                 <td>${escapeHtml(formatDeviceActivityDisplay(item))}</td>
                 <td>${escapeHtml(getDeviceActivityStatusLabel(item))}</td>
               </tr>`,
-          )
-          .join("")
+        )
+        .join("")
       : `<tr><td colspan="5" class="no-data">Không có dữ liệu sửa chữa</td></tr>`
 
     const summaryOverviewRowsHtml = `
@@ -857,8 +858,8 @@ export function ReportsPage() {
 
     const inventoryRowsHtml = inventorySummary.length
       ? inventorySummary
-          .map(
-            (item) => `
+        .map(
+          (item) => `
               <tr>
                 <td>${escapeHtml(formatDateTime(String(item.inputAt || "")))}</td>
                 <td>${escapeHtml(item.deviceName)}</td>
@@ -868,14 +869,14 @@ export function ReportsPage() {
                 <td>${item.inStock}</td>
                 <td>${new Intl.NumberFormat("vi-VN").format(item.totalInputValue)} VND</td>
               </tr>`,
-          )
-          .join("")
+        )
+        .join("")
       : `<tr><td colspan="7" style="text-align:center;">Không có dữ liệu</td></tr>`
 
     const logsRowsHtml = deviceActivityLogs.length
       ? deviceActivityLogs
-          .map(
-            (item) => `
+        .map(
+          (item) => `
               <tr>
                 <td>${escapeHtml(formatDateTime(item.updatedAt))}</td>
                 <td>${escapeHtml(item.serial)}</td>
@@ -883,21 +884,21 @@ export function ReportsPage() {
                 <td>${escapeHtml(formatDeviceActivityDisplay(item))}</td>
                 <td>${escapeHtml(getDeviceActivityStatusLabel(item))}</td>
               </tr>`,
-          )
-          .join("")
+        )
+        .join("")
       : `<tr><td colspan="5" style="text-align:center;">Không có dữ liệu</td></tr>`
 
     const stockRowsHtml = deviceStockMovements.length
       ? deviceStockMovements
-          .map(
-            (item) => `
+        .map(
+          (item) => `
               <tr>
                 <td>${escapeHtml(formatDateTime(String(item.updatedAt || "")))}</td>
                 <td>${escapeHtml(item.action)}</td>
                 <td>${escapeHtml(item.content)}</td>
               </tr>`,
-          )
-          .join("")
+        )
+        .join("")
       : `<tr><td colspan="3" style="text-align:center;">Không có dữ liệu</td></tr>`
 
     const html = `
@@ -1381,8 +1382,8 @@ export function ReportsPage() {
 
     const itemRowsHtml = importItems.length
       ? importItems
-          .map(
-            (line, index) => `
+        .map(
+          (line, index) => `
               <tr>
                 <td class="center">${index + 1}</td>
                 <td>${escapeHtml(line.itemName)}</td>
@@ -1392,8 +1393,8 @@ export function ReportsPage() {
                 <td class="right">${new Intl.NumberFormat("vi-VN").format(Number(line.unitCost) || 0)}</td>
                 <td class="right">${new Intl.NumberFormat("vi-VN").format(Number(line.lineTotal) || 0)}</td>
               </tr>`,
-          )
-          .join("")
+        )
+        .join("")
       : `<tr><td colspan="7" class="center">Chưa có dữ liệu chi tiết lô CSV</td></tr>`
 
     const html = `
@@ -1598,7 +1599,7 @@ export function ReportsPage() {
       body: JSON.stringify({ templateTitle: template.title, period: selectedDateRangeLabel }),
     })
       .then((response) => response.json())
-        .then((data) => {
+      .then((data) => {
         toast({
           description: data?.message || `Tạo báo cáo từ mẫu: ${template.title}`,
           duration: 2000,
@@ -1710,273 +1711,272 @@ export function ReportsPage() {
                       <h3 className="text-2xl font-semibold text-foreground">Kiểm kê thiết bị</h3>
 
                       <div className="mt-6 rounded-md border border-border/60 bg-muted/10 p-4">
-                      <div className="mb-4 grid grid-cols-2 gap-2 rounded-md bg-background p-3 text-sm md:grid-cols-6">
-                        <div>
-                          <p className="text-muted-foreground">Tổng thiết bị</p>
-                          <p className="font-semibold text-foreground">{inventoryTotals.quantity}</p>
+                        <div className="mb-4 grid grid-cols-2 gap-2 rounded-md bg-background p-3 text-sm md:grid-cols-6">
+                          <div>
+                            <p className="text-muted-foreground">Tổng thiết bị</p>
+                            <p className="font-semibold text-foreground">{inventoryTotals.quantity}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Đang sử dụng</p>
+                            <p className="font-semibold text-foreground">{inventoryTotals.inUse}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Chưa sử dụng</p>
+                            <p className="font-semibold text-foreground">{inventoryTotals.inStock}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Đã thanh lý</p>
+                            <p className="font-semibold text-foreground">{inventoryTotals.liquidatedQuantity || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Tổng giá trị nhập vào</p>
+                            <p className="font-semibold text-foreground">
+                              {new Intl.NumberFormat("vi-VN").format(inventoryTotals.totalInputValue)} VND
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Tổng giá trị thanh lý</p>
+                            <p className="font-semibold text-foreground">
+                              {new Intl.NumberFormat("vi-VN").format(inventoryTotals.liquidatedValue || 0)} VND
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-muted-foreground">Đang sử dụng</p>
-                          <p className="font-semibold text-foreground">{inventoryTotals.inUse}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Chưa sử dụng</p>
-                          <p className="font-semibold text-foreground">{inventoryTotals.inStock}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Đã thanh lý</p>
-                          <p className="font-semibold text-foreground">{inventoryTotals.liquidatedQuantity || 0}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Tổng giá trị nhập vào</p>
-                          <p className="font-semibold text-foreground">
-                            {new Intl.NumberFormat("vi-VN").format(inventoryTotals.totalInputValue)} VND
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Tổng giá trị thanh lý</p>
-                          <p className="font-semibold text-foreground">
-                            {new Intl.NumberFormat("vi-VN").format(inventoryTotals.liquidatedValue || 0)} VND
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="max-h-[320px] overflow-auto rounded-md border border-border/60 bg-background">
-                        {inventorySummary.length ? (
-                          <table className="w-max min-w-full border-collapse text-center">
-                            <thead className="sticky top-0 z-10 bg-secondary/60">
-                              <tr>
-                                <th className="w-[170px] border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Thời gian nhập vào</th>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Tên thiết bị</th>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Hãng sản xuất</th>
-                                <th className="w-[110px] border border-border/70 bg-secondary px-2 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Tổng số lượng</th>
-                                <th className="w-[110px] border border-border/70 bg-secondary px-2 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Đang sử dụng</th>
-                                <th className="w-[90px] border border-border/70 bg-secondary px-2 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Chưa sử dụng</th>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Tổng giá trị nhập vào</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {inventorySummary.map((item) => (
-                                <tr key={`inventory-${item.deviceName}-${item.manufacturer}`}>
-                                  <td className="w-[170px] border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">{formatDateTime(String(item.inputAt || ""))}</td>
-                                  <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">{item.deviceName}</td>
-                                  <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">{item.manufacturer}</td>
-                                  <td className="w-[110px] border border-border/60 px-2 py-2 text-sm text-foreground whitespace-nowrap">{item.totalQuantity}</td>
-                                  <td className="w-[110px] border border-border/60 px-2 py-2 text-sm text-foreground whitespace-nowrap">{item.inUse}</td>
-                                  <td className="w-[90px] border border-border/60 px-2 py-2 text-sm text-foreground whitespace-nowrap">{item.inStock}</td>
-                                  <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">
-                                    {new Intl.NumberFormat("vi-VN").format(item.totalInputValue)} VND
-                                  </td>
+                        <div className="max-h-[320px] overflow-auto rounded-md border border-border/60 bg-background">
+                          {inventorySummary.length ? (
+                            <table className="w-max min-w-full border-collapse text-center">
+                              <thead className="sticky top-0 z-10 bg-secondary/60">
+                                <tr>
+                                  <th className="w-[170px] border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Thời gian nhập vào</th>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Tên thiết bị</th>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Hãng sản xuất</th>
+                                  <th className="w-[110px] border border-border/70 bg-secondary px-2 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Tổng số lượng</th>
+                                  <th className="w-[110px] border border-border/70 bg-secondary px-2 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Đang sử dụng</th>
+                                  <th className="w-[90px] border border-border/70 bg-secondary px-2 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Chưa sử dụng</th>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Tổng giá trị nhập vào</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        ) : (
-                          <div className="py-6 text-center text-muted-foreground">Chưa có dữ liệu kiểm kê thiết bị</div>
-                        )}
-                      </div>
-
-                      <div className="mt-4 rounded-md border border-border/60 bg-background p-3">
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <h4 className="text-base font-semibold text-foreground">Tình trạng Nhập - Xuất thiết bị</h4>
+                              </thead>
+                              <tbody>
+                                {inventorySummary.map((item) => (
+                                  <tr key={`inventory-${item.deviceName}-${item.manufacturer}`}>
+                                    <td className="w-[170px] border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">{formatDateTime(String(item.inputAt || ""))}</td>
+                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">{item.deviceName}</td>
+                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">{item.manufacturer}</td>
+                                    <td className="w-[110px] border border-border/60 px-2 py-2 text-sm text-foreground whitespace-nowrap">{item.totalQuantity}</td>
+                                    <td className="w-[110px] border border-border/60 px-2 py-2 text-sm text-foreground whitespace-nowrap">{item.inUse}</td>
+                                    <td className="w-[90px] border border-border/60 px-2 py-2 text-sm text-foreground whitespace-nowrap">{item.inStock}</td>
+                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">
+                                      {new Intl.NumberFormat("vi-VN").format(item.totalInputValue)} VND
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div className="py-6 text-center text-muted-foreground">Chưa có dữ liệu kiểm kê thiết bị</div>
+                          )}
                         </div>
 
-                        <div className="max-h-[260px] overflow-auto rounded-md border border-border/50">
-                          <table className="w-max min-w-full border-collapse text-center">
-                            <thead className="sticky top-0 z-20 bg-secondary">
-                              <tr>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Thời gian</th>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Loại</th>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Nội dung</th>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-center whitespace-nowrap">
-                                  <span className="sr-only">Thao tác</span>
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {deviceStockMovements.length ? (
-                                deviceStockMovements.map((item) => (
-                                  <tr key={item.id}>
-                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">
-                                      {formatDateTime(String(item.updatedAt || ""))}
-                                    </td>
-                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">{item.action}</td>
-                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground">{item.content}</td>
-                                    <td className="border border-border/60 px-3 py-2 text-center whitespace-nowrap">
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreHorizontal className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          {item.action === "Nhập CSV" && (
-                                            <DropdownMenuItem onClick={() => handleExportImportReceipt(item)}>
-                                              Xuất phiếu nhập
+                        <div className="mt-4 rounded-md border border-border/60 bg-background p-3">
+                          <div className="mb-3 flex items-center justify-between gap-2">
+                            <h4 className="text-base font-semibold text-foreground">Tình trạng Nhập - Xuất thiết bị</h4>
+                          </div>
+
+                          <div className="max-h-[260px] overflow-auto rounded-md border border-border/50">
+                            <table className="w-max min-w-full border-collapse text-center">
+                              <thead className="sticky top-0 z-20 bg-secondary">
+                                <tr>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Thời gian</th>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Loại</th>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Nội dung</th>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-center whitespace-nowrap">
+                                    <span className="sr-only">Thao tác</span>
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {deviceStockMovements.length ? (
+                                  deviceStockMovements.map((item) => (
+                                    <tr key={item.id}>
+                                      <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">
+                                        {formatDateTime(String(item.updatedAt || ""))}
+                                      </td>
+                                      <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">{item.action}</td>
+                                      <td className="border border-border/60 px-3 py-2 text-sm text-foreground">{item.content}</td>
+                                      <td className="border border-border/60 px-3 py-2 text-center whitespace-nowrap">
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                              <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                            {item.action === "Nhập CSV" && (
+                                              <DropdownMenuItem onClick={() => handleExportImportReceipt(item)}>
+                                                Xuất phiếu nhập
+                                              </DropdownMenuItem>
+                                            )}
+                                            <DropdownMenuItem
+                                              onClick={() => handleRequestDeleteStockMovement(item)}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              Xóa
                                             </DropdownMenuItem>
-                                          )}
-                                          <DropdownMenuItem
-                                            onClick={() => handleRequestDeleteStockMovement(item)}
-                                            className="text-destructive focus:text-destructive"
-                                          >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Xóa
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan={4} className="border border-border/60 px-3 py-5 text-center text-sm text-muted-foreground">
+                                      Chưa có nhật kí nhập - xuất thiết bị
                                     </td>
                                   </tr>
-                                ))
-                              ) : (
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 rounded-md border border-border/60 bg-background p-3">
+                          <div className="mb-3 flex items-center justify-between gap-2">
+                            <h4 className="text-base font-semibold text-foreground">Nhật kí thiết bị gần đây</h4>
+                          </div>
+
+                          <div className="max-h-[260px] overflow-auto rounded-md border border-border/50">
+                            <table className="w-max min-w-full border-collapse text-center">
+                              <thead className="sticky top-0 z-10 bg-secondary/50">
                                 <tr>
-                                  <td colSpan={4} className="border border-border/60 px-3 py-5 text-center text-sm text-muted-foreground">
-                                    Chưa có nhật kí nhập - xuất thiết bị
-                                  </td>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Thời gian</th>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Nội dung</th>
+                                  <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Trạng thái</th>
                                 </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 rounded-md border border-border/60 bg-background p-3">
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <h4 className="text-base font-semibold text-foreground">Nhật kí thiết bị gần đây</h4>
-                        </div>
-
-                        <div className="max-h-[260px] overflow-auto rounded-md border border-border/50">
-                          <table className="w-max min-w-full border-collapse text-center">
-                            <thead className="sticky top-0 z-10 bg-secondary/50">
-                              <tr>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Thời gian</th>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Nội dung</th>
-                                <th className="border border-border/70 bg-secondary px-3 py-2 text-xs font-semibold text-foreground whitespace-nowrap">Trạng thái</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {deviceActivityLogs.length ? (
-                                deviceActivityLogs.map((item) => (
-                                  <tr key={`device-log-${item.id}`}>
-                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">
-                                      {formatDateTime(item.updatedAt)}
-                                    </td>
-                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground">
-                                      {formatDeviceActivityDisplay(item)}
-                                    </td>
-                                    <td className="border border-border/60 px-3 py-2 text-sm text-foreground text-center">
-                                      <Badge className={statusClass[item.status]}>{getDeviceActivityStatusLabel(item)}</Badge>
+                              </thead>
+                              <tbody>
+                                {deviceActivityLogs.length ? (
+                                  deviceActivityLogs.map((item) => (
+                                    <tr key={`device-log-${item.id}`}>
+                                      <td className="border border-border/60 px-3 py-2 text-sm text-foreground whitespace-nowrap">
+                                        {formatDateTime(item.updatedAt)}
+                                      </td>
+                                      <td className="border border-border/60 px-3 py-2 text-sm text-foreground">
+                                        {formatDeviceActivityDisplay(item)}
+                                      </td>
+                                      <td className="border border-border/60 px-3 py-2 text-sm text-foreground text-center">
+                                        <Badge className={statusClass[item.status]}>{getDeviceActivityStatusLabel(item)}</Badge>
+                                      </td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan={3} className="border border-border/60 px-3 py-5 text-center text-sm text-muted-foreground">
+                                      Chưa có nhật kí thiết bị
                                     </td>
                                   </tr>
-                                ))
-                              ) : (
-                                <tr>
-                                  <td colSpan={3} className="border border-border/60 px-3 py-5 text-center text-sm text-muted-foreground">
-                                    Chưa có nhật kí thiết bị
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-              <Card className="border-border bg-card">
-                  <CardContent className="p-5">
-                    <h3 className="text-2xl font-semibold text-foreground">Phân bố thiết bị</h3>
-                    <p className="mt-1 text-base text-muted-foreground">Theo danh mục</p>
-
-                    <div className="mt-6 flex flex-col items-center gap-5">
-                      <div
-                        className="relative h-64 w-64 transition-transform duration-500 ease-out"
-                        style={{
-                          transform: animateCharts ? "scale(1)" : "scale(0.92)",
-                          opacity: animateCharts ? 1 : 0.7,
-                        }}
-                      >
-                        <svg viewBox="0 0 240 240" className="h-full w-full">
-                          <circle
-                            cx="120"
-                            cy="120"
-                            r="96"
-                            fill="none"
-                            stroke="hsl(var(--muted))"
-                            strokeWidth="34"
-                            opacity="0.35"
-                          />
-
-                          {donutSegments.map((segment, index) => (
-                            <g
-                              key={`${segment.name}-${index}`}
-                              className="cursor-pointer transition-transform duration-200 ease-out"
-                              style={{
-                                transform:
-                                  activeCategoryIndex === index
-                                    ? `translate(${segment.shiftX}px, ${segment.shiftY}px)`
-                                    : "translate(0px, 0px)",
-                                transformOrigin: "120px 120px",
-                              }}
-                              onMouseEnter={() => setActiveCategoryIndex(index)}
-                              onMouseLeave={() => setActiveCategoryIndex(null)}
-                            >
-                              <circle
-                                cx="120"
-                                cy="120"
-                                r="96"
-                                fill="none"
-                                stroke={segment.colorHex}
-                                strokeWidth="34"
-                                strokeDasharray={`${segment.dashLength} ${segment.dashGap}`}
-                                strokeDashoffset={segment.dashOffset}
-                                transform="rotate(-90 120 120)"
-                              />
-                            </g>
-                          ))}
-                        </svg>
-
-                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <div className="flex h-44 w-44 items-center justify-center rounded-full bg-background text-center">
-                            {activeCategoryIndex !== null && donutSegments[activeCategoryIndex] ? (
-                              <div>
-                                <p className="text-sm text-muted-foreground">{donutSegments[activeCategoryIndex].name}</p>
-                                <p className="text-2xl font-semibold text-foreground">{donutSegments[activeCategoryIndex].percent}%</p>
-                              </div>
-                            ) : (
-                              <div>
-                                <p className="text-sm text-muted-foreground">Tổng thiết bị</p>
-                                <p className="text-2xl font-semibold text-foreground">
-                                  {normalizedCategoryShare.length ? "100%" : "0%"}
-                                </p>
-                              </div>
-                            )}
+                                )}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
-                        {normalizedCategoryShare.length ? (
-                          normalizedCategoryShare.map((item, index) => (
-                            <div
-                              key={item.name}
-                              className={`flex items-center gap-2 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors ${
-                                activeCategoryIndex === index ? "bg-secondary text-foreground" : ""
-                              }`}
-                            >
-                              <span className={`h-3.5 w-3.5 rounded-full ${item.color}`} />
-                              <span>{item.name} ({item.percent}%)</span>
-                            </div>
-                          ))
-                        ) : (
-                          <span className="text-muted-foreground">Chưa có dữ liệu phân bố thiết bị</span>
-                        )}
-                      </div>
-                      </div>
                     </CardContent>
                   </Card>
+                </div>
+              )}
+
+              <Card className="border-border bg-card">
+                <CardContent className="p-5">
+                  <h3 className="text-2xl font-semibold text-foreground">Phân bố thiết bị</h3>
+                  <p className="mt-1 text-base text-muted-foreground">Theo danh mục</p>
+
+                  <div className="mt-6 flex flex-col items-center gap-5">
+                    <div
+                      className="relative h-64 w-64 transition-transform duration-500 ease-out"
+                      style={{
+                        transform: animateCharts ? "scale(1)" : "scale(0.92)",
+                        opacity: animateCharts ? 1 : 0.7,
+                      }}
+                    >
+                      <svg viewBox="0 0 240 240" className="h-full w-full">
+                        <circle
+                          cx="120"
+                          cy="120"
+                          r="96"
+                          fill="none"
+                          stroke="hsl(var(--muted))"
+                          strokeWidth="34"
+                          opacity="0.35"
+                        />
+
+                        {donutSegments.map((segment, index) => (
+                          <g
+                            key={`${segment.name}-${index}`}
+                            className="cursor-pointer transition-transform duration-200 ease-out"
+                            style={{
+                              transform:
+                                activeCategoryIndex === index
+                                  ? `translate(${segment.shiftX}px, ${segment.shiftY}px)`
+                                  : "translate(0px, 0px)",
+                              transformOrigin: "120px 120px",
+                            }}
+                            onMouseEnter={() => setActiveCategoryIndex(index)}
+                            onMouseLeave={() => setActiveCategoryIndex(null)}
+                          >
+                            <circle
+                              cx="120"
+                              cy="120"
+                              r="96"
+                              fill="none"
+                              stroke={segment.colorHex}
+                              strokeWidth="34"
+                              strokeDasharray={`${segment.dashLength} ${segment.dashGap}`}
+                              strokeDashoffset={segment.dashOffset}
+                              transform="rotate(-90 120 120)"
+                            />
+                          </g>
+                        ))}
+                      </svg>
+
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <div className="flex h-44 w-44 items-center justify-center rounded-full bg-background text-center">
+                          {activeCategoryIndex !== null && donutSegments[activeCategoryIndex] ? (
+                            <div>
+                              <p className="text-sm text-muted-foreground">{donutSegments[activeCategoryIndex].name}</p>
+                              <p className="text-2xl font-semibold text-foreground">{donutSegments[activeCategoryIndex].percent}%</p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-sm text-muted-foreground">Tổng thiết bị</p>
+                              <p className="text-2xl font-semibold text-foreground">
+                                {normalizedCategoryShare.length ? "100%" : "0%"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
+                      {normalizedCategoryShare.length ? (
+                        normalizedCategoryShare.map((item, index) => (
+                          <div
+                            key={item.name}
+                            className={`flex items-center gap-2 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors ${activeCategoryIndex === index ? "bg-secondary text-foreground" : ""
+                              }`}
+                          >
+                            <span className={`h-3.5 w-3.5 rounded-full ${item.color}`} />
+                            <span>{item.name} ({item.percent}%)</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground">Chưa có dữ liệu phân bố thiết bị</span>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card className="border-border bg-card">
                 <CardContent className="p-5">
