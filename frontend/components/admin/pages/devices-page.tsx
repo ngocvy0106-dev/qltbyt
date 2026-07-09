@@ -473,6 +473,7 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
   const [detailQrCodeDataUrl, setDetailQrCodeDataUrl] = useState("");
   const [exportCategories, setExportCategories] = useState<string[]>([]);
   const [exportDepartments, setExportDepartments] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
   const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
   const [selectedDeleteDevice, setSelectedDeleteDevice] =
@@ -507,25 +508,34 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isImportingCsv, setIsImportingCsv] = useState(false);
 
-  const categories = useMemo(() => {
-    const groupedMap = new Map<string, number>();
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/categories/summary`, {
+          cache: "no-store",
+        });
 
-    devices.forEach((device) => {
-      const categoryName =
-        String(device.category || "").trim() || "Chưa phân loại";
-      groupedMap.set(categoryName, (groupedMap.get(categoryName) || 0) + 1);
-    });
-
-    return Array.from(groupedMap.entries())
-      .sort((a, b) => {
-        if (b[1] !== a[1]) {
-          return b[1] - a[1];
+        if (!response.ok) {
+          setCategories([]);
+          return;
         }
 
-        return a[0].localeCompare(b[0], "vi");
-      })
-      .map(([name]) => name);
-  }, [devices]);
+        const data = (await response.json()) as {
+          categories?: Array<{ name?: string | null }>;
+        };
+
+        const categoryNames = (data.categories || [])
+          .map((item) => String(item.name || "").trim())
+          .filter(Boolean);
+
+        setCategories(Array.from(new Set(categoryNames)));
+      } catch {
+        setCategories([]);
+      }
+    };
+
+    void loadCategories();
+  }, [apiBaseUrl]);
 
   const departments = useMemo(
     () =>
