@@ -251,6 +251,32 @@ export function TransfersPage() {
     }).format(date)
   }
 
+  const formatDateTime = (value: string) => {
+    if (!value) {
+      return "-"
+    }
+
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) {
+      return value
+    }
+
+    const time = new Intl.DateTimeFormat("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(date)
+
+    const day = new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(date)
+
+    return `${time} ${day}`
+  }
+
+
   const normalizeDepartmentValue = (value: unknown) => {
     const text = String(value || "").trim()
     if (!text) {
@@ -1581,7 +1607,7 @@ export function TransfersPage() {
                     <td className="px-4 py-4 text-sm text-foreground">
                       {item.from} <span className="mx-2 text-muted-foreground">→</span> {item.to}
                     </td>
-                    <td className="px-4 py-4 text-sm text-foreground">{formatDate(item.requestDate)}</td>
+                    <td className="px-4 py-4 text-sm text-foreground">{formatDateTime(item.requestDate)}</td>
                     <td className="px-4 py-4 text-sm text-foreground">{item.requester}</td>
                     <td className="px-4 py-4">
                       <Badge className={statusClass[item.status]}>{statusLabel[item.status]}</Badge>

@@ -61,6 +61,7 @@ interface RepairItem {
   code: string
   deviceId?: number | null
   device: string
+  serial?: string
   issue: string
   reporter: string
   department: string
@@ -385,6 +386,7 @@ export function RepairPage() {
           code: it.code,
           deviceId: it.deviceId,
           device: it.device,
+          serial: it.serial,
           issue: it.issue,
           reporter: it.reporter,
           department: it.department,
@@ -1527,6 +1529,7 @@ export function RepairPage() {
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="text-center text-muted-foreground">Mã</TableHead>
                     <TableHead className="text-center text-muted-foreground">Thiết bị</TableHead>
+                    <TableHead className="text-center text-muted-foreground">Mã Serial</TableHead>
                     <TableHead className="text-center text-muted-foreground">Sự cố</TableHead>
                     <TableHead className="text-center text-muted-foreground">Người báo</TableHead>
                     <TableHead className="text-center text-muted-foreground">Khoa</TableHead>
@@ -1550,6 +1553,7 @@ export function RepairPage() {
                     <TableRow key={item.id} className={`border-border transition-all duration-1000 ${highlightedRowId === item.id ? "bg-primary/20 shadow-[inset_0_0_0_1px_hsl(var(--primary))]" : ""}`}>
                       <TableCell className="text-center"><Badge variant="outline" className="font-mono">{item.code}</Badge></TableCell>
                       <TableCell className="text-center font-medium">{item.device}</TableCell>
+                      <TableCell className="text-center font-mono">{item.serial}</TableCell>
                       <TableCell className="text-center max-w-[200px] truncate">{item.issue}</TableCell>
                       <TableCell className="text-center">{item.reporter}</TableCell>
                       <TableCell className="text-center">{item.department}</TableCell>

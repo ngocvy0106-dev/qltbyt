@@ -57,6 +57,7 @@ interface MaintenanceItem {
   code: string
   deviceId?: number | null
   deviceName: string
+  serialNumber?: string
   note: string
   type: "Định kỳ" | "Khẩn cấp"
   dueDate: string
@@ -999,6 +1000,7 @@ export function MaintenancePage() {
                       <thead>
                         <tr className="border-b border-border text-center">
                           <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Thiết bị</th>
+                          <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Mã Serial</th>
                           <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Loại</th>
                           <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Ngày hẹn</th>
                           <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Nhân viên xử lý</th>
@@ -1025,6 +1027,7 @@ export function MaintenancePage() {
                               <p className="break-words text-base font-semibold text-foreground">{item.deviceName}</p>
                               <p className="break-words text-sm text-muted-foreground">{item.note}</p>
                             </td>
+                            <td className="px-2 py-4 text-center font-mono text-sm text-muted-foreground">{item.serialNumber}</td>
                             <td className="px-2 py-4 text-center text-foreground">
                               <span className="inline-flex items-center justify-center gap-2">
                                 <span className={`h-2.5 w-2.5 rounded-full ${item.type === "Định kỳ" ? "bg-info" : "bg-destructive"}`} />
@@ -1135,6 +1138,7 @@ export function MaintenancePage() {
                       <thead>
                         <tr className="border-b border-border text-center">
                           <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Thiết bị</th>
+                          <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Mã Serial</th>
                           <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Loại</th>
                           <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Ngày hẹn</th>
                           <th className="px-2 py-4 text-sm font-semibold text-muted-foreground">Nhân viên xử lý</th>
@@ -1161,6 +1165,7 @@ export function MaintenancePage() {
                               <p className="break-words text-base font-semibold text-foreground">{item.deviceName}</p>
                               <p className="break-words text-sm text-muted-foreground">{item.note}</p>
                             </td>
+                            <td className="px-2 py-4 text-center font-mono text-sm text-muted-foreground">{item.serialNumber}</td>
                             <td className="px-2 py-4 text-center text-foreground">
                               <span className="inline-flex items-center justify-center gap-2">
                                 <span className={`h-2.5 w-2.5 rounded-full ${item.type === "Định kỳ" ? "bg-info" : "bg-destructive"}`} />
