@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Header } from "@/components/admin/header"
-import { Sidebar } from "@/components/admin/sidebar"
-import { DevicesPage } from "@/components/admin/pages/devices-page"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Header } from "@/components/admin/header";
+import { Sidebar } from "@/components/admin/sidebar";
+import { DevicesPage } from "@/components/admin/pages/devices-page";
 
 export default function DevicesRoutePage() {
-  const router = useRouter()
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token")
+    const token = localStorage.getItem("token");
 
     if (token === "logged") {
-      setIsAuthorized(true)
-      return
+      setIsAuthorized(true);
+      return;
     }
 
-    setIsAuthorized(false)
-    router.replace("/login")
-  }, [router])
+    setIsAuthorized(false);
+    router.replace("/login");
+  }, [router]);
 
   if (isAuthorized !== true) {
-    return null
+    return null;
   }
 
   return (
@@ -40,5 +40,5 @@ export default function DevicesRoutePage() {
         </main>
       </div>
     </div>
-  )
+  );
 }

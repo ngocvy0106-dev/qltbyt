@@ -1,4 +1,4 @@
-export type AppRole = "admin" | "nhan-vien" | "unknown"
+export type AppRole = "admin" | "nhan-vien" | "unknown";
 
 function normalizeText(value: string) {
   return String(value || "")
@@ -6,15 +6,15 @@ function normalizeText(value: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
+    .replace(/đ/g, "d");
 }
 
 function normalizePermission(value: string) {
-  return normalizeText(value || "")
+  return normalizeText(value || "");
 }
 
 export function resolveAppRole(roleValue: string | null | undefined): AppRole {
-  const role = normalizeText(roleValue || "")
+  const role = normalizeText(roleValue || "");
 
   if (
     role.includes("admin") ||
@@ -22,14 +22,20 @@ export function resolveAppRole(roleValue: string | null | undefined): AppRole {
     role.includes("super admin") ||
     role.includes("quan tri vien")
   ) {
-    return "admin"
+    return "admin";
   }
 
-  if (role.includes("nhan vien") || role.includes("nhan-vien") || role.includes("employee") || role.includes("staff") || role) {
-    return "nhan-vien"
+  if (
+    role.includes("nhan vien") ||
+    role.includes("nhan-vien") ||
+    role.includes("employee") ||
+    role.includes("staff") ||
+    role
+  ) {
+    return "nhan-vien";
   }
 
-  return "unknown"
+  return "unknown";
 }
 
 const roleAllowedPaths: Record<AppRole, string[]> = {
@@ -45,9 +51,15 @@ const roleAllowedPaths: Record<AppRole, string[]> = {
     "/permissions",
     "/nhan-vien",
   ],
-  "nhan-vien": ["/devices", "/transfers", "/maintenance", "/repairs", "/nhan-vien"],
+  "nhan-vien": [
+    "/devices",
+    "/transfers",
+    "/maintenance",
+    "/repairs",
+    "/nhan-vien",
+  ],
   unknown: ["/dashboard"],
-}
+};
 
 const permissionAllowedPaths: Record<string, string[]> = {
   "xem thiet bi": ["/devices"],
@@ -78,68 +90,73 @@ const permissionAllowedPaths: Record<string, string[]> = {
 
   "quan ly nguoi dung": ["/users"],
   "quan ly phan quyen": ["/permissions"],
-}
+};
 
 function resolveAllowedPathsByPermissions(permissions?: string[] | null) {
   const values = Array.isArray(permissions)
-    ? permissions.map((permission) => normalizePermission(String(permission || ""))).filter(Boolean)
-    : []
+    ? permissions
+        .map((permission) => normalizePermission(String(permission || "")))
+        .filter(Boolean)
+    : [];
 
   if (values.length === 0) {
-    return []
+    return [];
   }
 
   if (values.includes("toan quyen")) {
-    return [...roleAllowedPaths.admin]
+    return [...roleAllowedPaths.admin];
   }
 
   return Array.from(
     new Set(
-      values.flatMap((permission) => permissionAllowedPaths[permission] || [])
-    )
-  )
+      values.flatMap((permission) => permissionAllowedPaths[permission] || []),
+    ),
+  );
 }
 
-export function getDefaultPathByRole(roleValue: string | null | undefined, permissions?: string[] | null) {
-  const hasProvidedPermissions = Array.isArray(permissions)
-  const permissionPaths = resolveAllowedPathsByPermissions(permissions)
+export function getDefaultPathByRole(
+  roleValue: string | null | undefined,
+  permissions?: string[] | null,
+) {
+  const hasProvidedPermissions = Array.isArray(permissions);
+  const permissionPaths = resolveAllowedPathsByPermissions(permissions);
   if (hasProvidedPermissions && permissionPaths.length > 0) {
-    return permissionPaths[0]
+    return permissionPaths[0];
   }
 
-  const appRole = resolveAppRole(roleValue)
+  const appRole = resolveAppRole(roleValue);
 
   if (appRole === "nhan-vien") {
-    return "/devices"
+    return "/devices";
   }
 
-  return "/dashboard"
+  return "/dashboard";
 }
 
 export function isPathAllowedForRole(
   pathname: string,
   roleValue: string | null | undefined,
-  permissions?: string[] | null
+  permissions?: string[] | null,
 ) {
-  const appRole = resolveAppRole(roleValue)
-  const permissionPaths = resolveAllowedPathsByPermissions(permissions)
-  const rolePaths = roleAllowedPaths[appRole] || []
+  const appRole = resolveAppRole(roleValue);
+  const permissionPaths = resolveAllowedPathsByPermissions(permissions);
+  const rolePaths = roleAllowedPaths[appRole] || [];
 
   // Use permissionPaths when permissions are explicitly set AND non-empty.
   // Fall back to rolePaths if permissions is null/undefined/empty (e.g. Admin before sync).
-  const allowedPaths = permissionPaths.length > 0 ? permissionPaths : rolePaths
+  const allowedPaths = permissionPaths.length > 0 ? permissionPaths : rolePaths;
 
   if (pathname === "/") {
-    return false
+    return false;
   }
 
   return allowedPaths.some((allowedPath) => {
     if (pathname === allowedPath) {
-      return true
+      return true;
     }
 
-    return pathname.startsWith(`${allowedPath}/`)
-  })
+    return pathname.startsWith(`${allowedPath}/`);
+  });
 }
 
 // Returns true only when the role is non-admin AND permissions are explicitly
@@ -149,27 +166,28 @@ export function isPathAllowedForRole(
 export function isPathExplicitlyForbidden(
   pathname: string,
   roleValue: string | null | undefined,
-  permissions?: string[] | null
+  permissions?: string[] | null,
 ) {
-  const appRole = resolveAppRole(roleValue)
+  const appRole = resolveAppRole(roleValue);
   // Admin always sees everything regardless of permissions
   if (appRole === "admin") {
-    return false
+    return false;
   }
 
   // permissions not loaded yet → don't hide
   if (!Array.isArray(permissions)) {
-    return false
+    return false;
   }
 
-  const permissionPaths = resolveAllowedPathsByPermissions(permissions)
+  const permissionPaths = resolveAllowedPathsByPermissions(permissions);
 
   // Explicitly empty permissions = no access → hide all paths
   if (permissionPaths.length === 0) {
-    return true
+    return true;
   }
 
   return !permissionPaths.some(
-    (allowedPath) => pathname === allowedPath || pathname.startsWith(`${allowedPath}/`)
-  )
+    (allowedPath) =>
+      pathname === allowedPath || pathname.startsWith(`${allowedPath}/`),
+  );
 }
