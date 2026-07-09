@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/admin/header"
 import { Sidebar } from "@/components/admin/sidebar"
-import { CategoriesPage } from "@/components/admin/pages/categories-page"
 import { DevicesPage } from "@/components/admin/pages/devices-page"
 
 export default function DevicesRoutePage() {
@@ -36,7 +35,6 @@ export default function DevicesRoutePage() {
           <div className="mx-auto max-w-7xl">
             <div className="space-y-10">
               <DevicesPage />
-              <CategoriesPage />
             </div>
           </div>
         </main>

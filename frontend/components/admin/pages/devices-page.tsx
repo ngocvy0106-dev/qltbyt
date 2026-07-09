@@ -397,7 +397,11 @@ const statusLabels: Record<string, string> = {
   broken: "Hỏng",
 }
 
-export function DevicesPage() {
+interface DevicesPageProps {
+  onDataChanged?: () => void
+}
+
+export function DevicesPage({ onDataChanged }: DevicesPageProps) {
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
   const [devices, setDevices] = useState<DeviceItem[]>([])
   const [loggedInUser, setLoggedInUser] = useState<LoggedInUser>({})
@@ -463,21 +467,24 @@ export function DevicesPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [isImportingCsv, setIsImportingCsv] = useState(false)
 
-  const [categories, setCategories] = useState<string[]>([])
+  const categories = useMemo(() => {
+    const groupedMap = new Map<string, number>()
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch(`${apiBaseUrl}/api/categories/summary`, { cache: "no-store" })
-        if (response.ok) {
-          const data = await response.json()
-          const categoryNames = (data.categories || []).map((c: any) => c.name).filter(Boolean)
-          setCategories(Array.from(new Set(categoryNames)) as string[])
+    devices.forEach((device) => {
+      const categoryName = String(device.category || "").trim() || "Chưa phân loại"
+      groupedMap.set(categoryName, (groupedMap.get(categoryName) || 0) + 1)
+    })
+
+    return Array.from(groupedMap.entries())
+      .sort((a, b) => {
+        if (b[1] !== a[1]) {
+          return b[1] - a[1]
         }
-      } catch (e) {}
-    }
-    fetchCategories()
-  }, [apiBaseUrl])
+
+        return a[0].localeCompare(b[0], "vi")
+      })
+      .map(([name]) => name)
+  }, [devices])
 
   const departments = useMemo(
     () =>
@@ -858,6 +865,7 @@ export function DevicesPage() {
 
       setIsEditDialogOpen(false)
       await loadDevices()
+      onDataChanged?.()
     } catch {
       alert("Không thể kết nối server")
     } finally {
@@ -910,6 +918,7 @@ export function DevicesPage() {
       }
 
       setDevices((prev) => prev.filter((item) => item.id !== device.id))
+      onDataChanged?.()
       toast({
         description: `Đã xóa thiết bị ${device.code} thành công`,
         duration: 2000,
@@ -1572,6 +1581,7 @@ export function DevicesPage() {
         }).catch(() => null)
 
         await loadDevices()
+        onDataChanged?.()
       }
 
       if (failedCount === 0) {
@@ -1675,6 +1685,7 @@ export function DevicesPage() {
         imageUrl: "",
       })
       await loadDevices()
+      onDataChanged?.()
     } catch {
       alert("Không thể kết nối server")
     } finally {

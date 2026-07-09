@@ -36,7 +36,6 @@ const roleAllowedPaths: Record<AppRole, string[]> = {
   admin: [
     "/dashboard",
     "/devices",
-    "/categories",
     "/transfers",
     "/maintenance",
     "/repairs",
@@ -51,7 +50,7 @@ const roleAllowedPaths: Record<AppRole, string[]> = {
 }
 
 const permissionAllowedPaths: Record<string, string[]> = {
-  "xem thiet bi": ["/devices", "/categories"],
+  "xem thiet bi": ["/devices"],
   "them thiet bi": ["/devices"],
   "sua thiet bi": ["/devices"],
   "xoa thiet bi": ["/devices"],
