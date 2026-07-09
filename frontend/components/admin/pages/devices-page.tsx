@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -30,13 +31,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -468,6 +462,8 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
   const [detailQrCodeDataUrl, setDetailQrCodeDataUrl] = useState("");
   const [exportCategories, setExportCategories] = useState<string[]>([]);
   const [exportDepartments, setExportDepartments] = useState<string[]>([]);
+  const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
+  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
   const [selectedDeleteDevice, setSelectedDeleteDevice] =
     useState<DeviceItem | null>(null);
   const [editForm, setEditForm] = useState({
@@ -543,6 +539,16 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
     }
     return uniqueOptions;
   }, []);
+
+  const categoryFilterLabel =
+    categoryFilter === "all"
+      ? "Danh mục"
+      : categories.find((category) => category.toLowerCase() === categoryFilter) || "Danh mục";
+
+  const statusFilterLabel =
+    statusFilter === "all"
+      ? "Trạng thái"
+      : statusOptions.find((status) => status.value === statusFilter)?.label || "Trạng thái";
 
   const sortedDevices = useMemo(() => {
     return [...devices].sort((first, second) => {
@@ -1918,32 +1924,73 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
                 onChange={(event) => setSearch(event.target.value)}
               />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full lg:w-[180px]">
-                <SelectValue placeholder="Danh mục" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Danh mục</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category.toLowerCase()}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full lg:w-[160px]">
-                <SelectValue placeholder="Trạng thái" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Trạng thái</SelectItem>
+            <DropdownMenu
+              open={isCategoryFilterOpen}
+              onOpenChange={setIsCategoryFilterOpen}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-between lg:w-[180px]"
+                >
+                  <span className="truncate">{categoryFilterLabel}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[180px]" align="start">
+                <DropdownMenuCheckboxItem
+                  checked={categoryFilter === "all"}
+                  onSelect={(event) => event.preventDefault()}
+                  onCheckedChange={() => setCategoryFilter("all")}
+                >
+                  Danh mục
+                </DropdownMenuCheckboxItem>
+                {categories.map((category) => {
+                  const value = category.toLowerCase();
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={category}
+                      checked={categoryFilter === value}
+                      onSelect={(event) => event.preventDefault()}
+                      onCheckedChange={() => setCategoryFilter(value)}
+                    >
+                      {category}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu
+              open={isStatusFilterOpen}
+              onOpenChange={setIsStatusFilterOpen}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-between lg:w-[160px]"
+                >
+                  <span className="truncate">{statusFilterLabel}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[180px]" align="start">
+                <DropdownMenuCheckboxItem
+                  checked={statusFilter === "all"}
+                  onSelect={(event) => event.preventDefault()}
+                  onCheckedChange={() => setStatusFilter("all")}
+                >
+                  Trạng thái
+                </DropdownMenuCheckboxItem>
                 {statusOptions.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
+                  <DropdownMenuCheckboxItem
+                    key={status.value}
+                    checked={statusFilter === status.value}
+                    onSelect={(event) => event.preventDefault()}
+                    onCheckedChange={() => setStatusFilter(status.value)}
+                  >
                     {status.label}
-                  </SelectItem>
+                  </DropdownMenuCheckboxItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="outline"
               onClick={() => setIsExportDialogOpen(true)}
