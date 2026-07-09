@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -31,6 +30,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -1937,24 +1943,29 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[180px]" align="start">
-                <DropdownMenuCheckboxItem
-                  checked={categoryFilter === "all"}
-                  onSelect={(event) => event.preventDefault()}
-                  onCheckedChange={() => setCategoryFilter("all")}
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    setCategoryFilter("all");
+                  }}
                 >
-                  Danh mục
-                </DropdownMenuCheckboxItem>
+                  <span className="flex-1">Danh mục</span>
+                  {categoryFilter === "all" && <span className="text-primary">✓</span>}
+                </DropdownMenuItem>
                 {categories.map((category) => {
                   const value = category.toLowerCase();
+                  const isSelected = categoryFilter === value;
                   return (
-                    <DropdownMenuCheckboxItem
+                    <DropdownMenuItem
                       key={category}
-                      checked={categoryFilter === value}
-                      onSelect={(event) => event.preventDefault()}
-                      onCheckedChange={() => setCategoryFilter(value)}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        setCategoryFilter(value);
+                      }}
                     >
-                      {category}
-                    </DropdownMenuCheckboxItem>
+                      <span className="flex-1">{category}</span>
+                      {isSelected && <span className="text-primary">✓</span>}
+                    </DropdownMenuItem>
                   );
                 })}
               </DropdownMenuContent>
@@ -1972,22 +1983,28 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[180px]" align="start">
-                <DropdownMenuCheckboxItem
-                  checked={statusFilter === "all"}
-                  onSelect={(event) => event.preventDefault()}
-                  onCheckedChange={() => setStatusFilter("all")}
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    setStatusFilter("all");
+                  }}
                 >
-                  Trạng thái
-                </DropdownMenuCheckboxItem>
+                  <span className="flex-1">Trạng thái</span>
+                  {statusFilter === "all" && <span className="text-primary">✓</span>}
+                </DropdownMenuItem>
                 {statusOptions.map((status) => (
-                  <DropdownMenuCheckboxItem
+                  <DropdownMenuItem
                     key={status.value}
-                    checked={statusFilter === status.value}
-                    onSelect={(event) => event.preventDefault()}
-                    onCheckedChange={() => setStatusFilter(status.value)}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setStatusFilter(status.value);
+                    }}
                   >
-                    {status.label}
-                  </DropdownMenuCheckboxItem>
+                    <span className="flex-1">{status.label}</span>
+                    {statusFilter === status.value && (
+                      <span className="text-primary">✓</span>
+                    )}
+                  </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
