@@ -22,6 +22,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -549,12 +554,15 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
   const categoryFilterLabel =
     categoryFilter === "all"
       ? "Danh mục"
-      : categories.find((category) => category.toLowerCase() === categoryFilter) || "Danh mục";
+      : categories.find(
+          (category) => category.toLowerCase() === categoryFilter,
+        ) || "Danh mục";
 
   const statusFilterLabel =
     statusFilter === "all"
       ? "Trạng thái"
-      : statusOptions.find((status) => status.value === statusFilter)?.label || "Trạng thái";
+      : statusOptions.find((status) => status.value === statusFilter)?.label ||
+        "Trạng thái";
 
   const sortedDevices = useMemo(() => {
     return [...devices].sort((first, second) => {
@@ -1930,84 +1938,88 @@ export function DevicesPage({ onDataChanged }: DevicesPageProps) {
                 onChange={(event) => setSearch(event.target.value)}
               />
             </div>
-            <DropdownMenu
+            <Popover
               open={isCategoryFilterOpen}
               onOpenChange={setIsCategoryFilterOpen}
             >
-              <DropdownMenuTrigger asChild>
+              <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className="w-full justify-between lg:w-[180px]"
                 >
                   <span className="truncate">{categoryFilterLabel}</span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[180px]" align="start">
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    setCategoryFilter("all");
-                  }}
-                >
-                  <span className="flex-1">Danh mục</span>
-                  {categoryFilter === "all" && <span className="text-primary">✓</span>}
-                </DropdownMenuItem>
-                {categories.map((category) => {
-                  const value = category.toLowerCase();
-                  const isSelected = categoryFilter === value;
-                  return (
-                    <DropdownMenuItem
-                      key={category}
-                      onSelect={(event) => {
-                        event.preventDefault();
-                        setCategoryFilter(value);
-                      }}
-                    >
-                      <span className="flex-1">{category}</span>
-                      {isSelected && <span className="text-primary">✓</span>}
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-2" align="start">
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => setCategoryFilter("all")}
+                  >
+                    <span>Danh mục</span>
+                    {categoryFilter === "all" && (
+                      <span className="text-primary">✓</span>
+                    )}
+                  </button>
+                  {categories.map((category) => {
+                    const value = category.toLowerCase();
+                    const isSelected = categoryFilter === value;
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => setCategoryFilter(value)}
+                      >
+                        <span>{category}</span>
+                        {isSelected && <span className="text-primary">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Popover
               open={isStatusFilterOpen}
               onOpenChange={setIsStatusFilterOpen}
             >
-              <DropdownMenuTrigger asChild>
+              <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className="w-full justify-between lg:w-[160px]"
                 >
                   <span className="truncate">{statusFilterLabel}</span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[180px]" align="start">
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    setStatusFilter("all");
-                  }}
-                >
-                  <span className="flex-1">Trạng thái</span>
-                  {statusFilter === "all" && <span className="text-primary">✓</span>}
-                </DropdownMenuItem>
-                {statusOptions.map((status) => (
-                  <DropdownMenuItem
-                    key={status.value}
-                    onSelect={(event) => {
-                      event.preventDefault();
-                      setStatusFilter(status.value);
-                    }}
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-2" align="start">
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => setStatusFilter("all")}
                   >
-                    <span className="flex-1">{status.label}</span>
-                    {statusFilter === status.value && (
+                    <span>Trạng thái</span>
+                    {statusFilter === "all" && (
                       <span className="text-primary">✓</span>
                     )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  </button>
+                  {statusOptions.map((status) => (
+                    <button
+                      key={status.value}
+                      type="button"
+                      className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                      onClick={() => setStatusFilter(status.value)}
+                    >
+                      <span>{status.label}</span>
+                      {statusFilter === status.value && (
+                        <span className="text-primary">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button
               variant="outline"
               onClick={() => setIsExportDialogOpen(true)}
