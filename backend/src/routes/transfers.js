@@ -707,13 +707,13 @@ router.post("/", async (req, res) => {
     const queryVariants = [
       `INSERT INTO device_transfers
        (request_code, device_id, device_name, serial_number, from_department, to_department, to_location, request_date, requester_name, transfer_reason, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE(), ?, ?, ?, NOW(), NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW())`,
       `INSERT INTO device_transfers
        (request_code, device_id, device_name, serial_number, from_department, to_department, request_date, requester_name, transfer_reason, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, CURDATE(), ?, ?, ?, NOW(), NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, NOW(), NOW())`,
       `INSERT INTO device_transfers
        (request_code, device_id, device_name, serial_number, from_department, to_department, request_date, requester_name, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, CURDATE(), ?, ?, NOW(), NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, ?, NOW(), NOW())`,
     ]
 
     const queryParams = [
